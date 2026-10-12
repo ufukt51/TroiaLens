@@ -1,0 +1,15 @@
+node_modules/
+dist/
+*.tsbuildinfo
+*.log
+.env
+
+# Real traces: user names, server addresses, password hashes. Never commit.
+samples/
+
+# --- graphify ---
+graphify-out/
+
+# --- Claude Code (yerel) ---
+.claude/
+CLAUDE.md
