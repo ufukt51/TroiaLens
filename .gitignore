@@ -9,6 +9,7 @@ samples/
 
 # --- graphify ---
 graphify-out/
+.graphifyignore
 
 # --- Claude Code (yerel) ---
 .claude/
