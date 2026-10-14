@@ -15,6 +15,7 @@ type View =
 /** Notepad++ panel: the plugin sends the active document, the page reports clicked lines back. */
 export function EmbeddedApp() {
   const [view, setView] = useState<View>({ kind: 'waiting' })
+  const [slideOver, setSlideOver] = useState(false)
   // Every load gets a ticket; results of an older load are dropped when the user switches tabs quickly
   const ticket = useRef(0)
 
@@ -40,6 +41,9 @@ export function EmbeddedApp() {
       switch (msg.type) {
         case 'theme':
           setTheme(msg.dark)
+          break
+        case 'prefs':
+          setSlideOver(msg.detailSlideOver)
           break
         case 'load':
           void load(msg.name, async () => msg.text)
@@ -69,7 +73,7 @@ export function EmbeddedApp() {
     case 'ready':
       return (
         <div className="h-dvh">
-          <AnalysisPage key={view.trace.id} trace={view.trace} embedded />
+          <AnalysisPage key={view.trace.id} trace={view.trace} embedded detailSlideOver={slideOver} />
         </div>
       )
     case 'busy':

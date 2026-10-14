@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ChevronDown, ChevronUp, Search } from 'lucide-react'
+import type { ParsedTrace } from '../../lib/types.ts'
 import type { Nav } from '../../pages/AnalysisPage.tsx'
+import { editorLine, traceLine } from '../../lib/locate.ts'
 import { VirtualList } from '../ui.tsx'
 
 const ROW_H = 20
 
-export function RawView({ text, nav, target }: { text: string; nav: Nav; target: { line: number; nonce: number } | null }) {
-  const lines = useMemo(() => text.split(/\r?\n/), [text])
+/** Lines are trace lines; the gutter numbers them like an editor does (bare CRs break lines there) */
+export function RawView({ lines, parsed, nav, target }: { lines: string[]; parsed: ParsedTrace; nav: Nav; target: { line: number; nonce: number } | null }) {
   const [query, setQuery] = useState('')
   const [hit, setHit] = useState(0)
   const [active, setActive] = useState<number | null>(null)
@@ -68,7 +70,7 @@ export function RawView({ text, nav, target }: { text: string; nav: Nav; target:
           onSubmit={(e) => {
             e.preventDefault()
             const n = parseInt(goto, 10)
-            if (n > 0) jump(Math.min(lines.length, n) - 1)
+            if (n > 0) jump(Math.min(lines.length, traceLine(parsed, n)) - 1)
           }}
         >
           <input className="input w-28 py-1 text-xs" placeholder="Satıra git" value={goto} onChange={(e) => setGoto(e.target.value.replace(/\D/g, ''))} />
@@ -89,7 +91,7 @@ export function RawView({ text, nav, target }: { text: string; nav: Nav; target:
                 if (id >= 0) nav.select(id)
               }}
             >
-              <span className="sticky left-0 w-16 shrink-0 bg-slate-50 pr-3 text-right text-[11px] text-slate-400 select-none dark:bg-slate-900">{i + 1}</span>
+              <span className="sticky left-0 w-16 shrink-0 bg-slate-50 pr-3 text-right text-[11px] text-slate-400 select-none dark:bg-slate-900">{editorLine(parsed, i + 1)}</span>
               <span className="pl-3 text-slate-700 dark:text-slate-300">{q.length >= 2 ? <Highlight text={line} q={q} /> : line}</span>
             </div>
           )

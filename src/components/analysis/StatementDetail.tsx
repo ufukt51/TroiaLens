@@ -1,16 +1,39 @@
-import { useEffect } from 'react'
-import { ChevronRight, FileText, GitBranch, X } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { ChevronRight, FileText, GitBranch, PanelBottom, PanelRight, X } from 'lucide-react'
 import type { ParsedTrace } from '../../lib/types.ts'
 import type { Nav } from '../../pages/AnalysisPage.tsx'
 import { fmtMs } from '../../lib/analyze.ts'
-import { KindChip, formatSql, msClass } from '../ui.tsx'
+import { editorLine } from '../../lib/locate.ts'
+import { CodeBlock, KindChip, ResizeHandle, formatSql, msClass } from '../ui.tsx'
 
+const HEIGHT_KEY = 'troialens.detailHeight'
+const MIN_H = 120
+const DEFAULT_H = 300
+/** Room the views above the pane keep */
+const KEEP_ABOVE = 140
+
+function savedHeight(): number {
+  try {
+    const h = Number(localStorage.getItem(HEIGHT_KEY))
+    if (h >= MIN_H) return h
+  } catch {
+    // Storage may be blocked; the default height will do
+  }
+  return DEFAULT_H
+}
+
+/**
+ * Detail of a statement: docked under the analysis views (its top edge drags to resize), or with slideOver
+ * a panel sliding over from the right.
+ */
 export function StatementDetail({
   parsed,
   stmtId,
   nav,
   onClose,
   embedded,
+  slideOver = false,
+  onToggleSlideOver,
 }: {
   parsed: ParsedTrace
   stmtId: number
@@ -18,8 +41,14 @@ export function StatementDetail({
   onClose: () => void
   /** In the Notepad++ panel the line opens in the editor instead of the raw view */
   embedded: boolean
+  slideOver?: boolean
+  /** Switches between the bottom pane and the slide-over */
+  onToggleSlideOver?: () => void
 }) {
   const st = parsed.statements[stmtId]
+  const [height, setHeight] = useState(savedHeight)
+  const pane = useRef<HTMLElement>(null)
+  const drag = useRef<{ h: number; max: number } | null>(null)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
@@ -27,103 +56,164 @@ export function StatementDetail({
     return () => removeEventListener('keydown', onKey)
   }, [onClose])
 
+  const maxHeight = () => Math.max(MIN_H, (pane.current?.parentElement?.clientHeight ?? 600) - KEEP_ABOVE)
+
+  const onStart = () => {
+    drag.current = { h: pane.current?.offsetHeight ?? height, max: maxHeight() }
+  }
+  const onDrag = (dy: number) => {
+    const d = drag.current
+    if (d) setHeight(Math.round(Math.min(d.max, Math.max(MIN_H, d.h - dy))))
+  }
+  const saveHeight = (h: number | null) => {
+    try {
+      if (h === null) localStorage.removeItem(HEIGHT_KEY)
+      else localStorage.setItem(HEIGHT_KEY, String(h))
+    } catch {
+      // Not remembered then
+    }
+  }
+  const resetHeight = () => {
+    setHeight(DEFAULT_H)
+    saveHeight(null)
+  }
+
   if (!st) return null
   const path: number[] = []
   for (let s = st.scopeId; s > 0; s = parsed.scopes[s].parent) path.unshift(s)
   const loop = st.loopId >= 0 ? parsed.statements[st.loopId] : null
 
-  return (
-    <div className="fixed inset-0 z-40 flex justify-end bg-slate-900/20 backdrop-blur-[1px] dark:bg-black/40" onClick={onClose}>
-      <aside
-        className="scroll-thin flex h-full w-full max-w-2xl flex-col overflow-y-auto border-l border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-slate-900"
-        onClick={(e) => e.stopPropagation()}
+  const header = (
+    <div className={`flex shrink-0 items-center gap-2 border-b border-slate-200 dark:border-slate-800 ${embedded ? 'px-3 py-1.5' : 'px-4 py-2'}`}>
+      <KindChip kind={st.kind} />
+      <span className="shrink-0 text-sm font-medium text-slate-900 dark:text-white">Satır {st.srcLine}</span>
+      <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden text-xs whitespace-nowrap text-slate-500">
+        {path.map((id, i) => (
+          <span key={id} className={`flex items-center gap-1 ${i < path.length - 1 ? 'min-w-0 shrink' : 'shrink-0'}`}>
+            {i > 0 && <ChevronRight className="h-3 w-3 shrink-0" />}
+            <button className="truncate font-mono hover:text-brand-600" onClick={() => nav.revealInTree(~id)} title={parsed.scopes[id].name}>
+              {parsed.scopes[id].label}
+            </button>
+          </span>
+        ))}
+      </div>
+      <button className="btn-ghost shrink-0 p-1.5" onClick={() => nav.revealInTree(st.id)} title="Ağaçta göster" aria-label="Ağaçta göster">
+        <GitBranch className="h-4 w-4" />
+      </button>
+      <button
+        className="btn-ghost shrink-0 p-1.5"
+        onClick={() => nav.openRaw(st.fileLine)}
+        title={embedded ? 'Editörde göster' : 'Ham dosyada aç'}
+        aria-label={embedded ? 'Editörde göster' : 'Ham dosyada aç'}
       >
-        <div className="sticky top-0 flex items-center gap-3 border-b border-slate-200 bg-white px-5 py-3 dark:border-slate-800 dark:bg-slate-900">
-          <KindChip kind={st.kind} />
-          <div className="min-w-0 flex-1 truncate text-sm font-medium text-slate-900 dark:text-white">Satır {st.srcLine}</div>
-          <button className="btn-ghost p-1.5" onClick={onClose} aria-label="Kapat">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
+        <FileText className="h-4 w-4" />
+      </button>
+      {onToggleSlideOver && (
+        <button
+          className="btn-ghost shrink-0 p-1.5"
+          onClick={onToggleSlideOver}
+          title={slideOver ? 'Altta bölme olarak göster' : 'Sağda kayan panelde göster'}
+          aria-label={slideOver ? 'Altta bölme olarak göster' : 'Sağda kayan panelde göster'}
+        >
+          {slideOver ? <PanelBottom className="h-4 w-4" /> : <PanelRight className="h-4 w-4" />}
+        </button>
+      )}
+      <button className="btn-ghost shrink-0 p-1.5" onClick={onClose} title="Kapat (Esc)" aria-label="Kapat">
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  )
 
-        <div className="space-y-5 p-5 text-sm">
-          <div className="flex flex-wrap items-center gap-1 text-xs text-slate-500">
-            {path.map((id, i) => (
-              <span key={id} className="flex items-center gap-1">
-                {i > 0 && <ChevronRight className="h-3 w-3" />}
-                <button className="font-mono hover:text-brand-600" onClick={() => nav.revealInTree(~id)} title={parsed.scopes[id].name}>
-                  {parsed.scopes[id].label}
-                </button>
+  const body = (
+    <div className={`scroll-thin min-h-0 flex-1 space-y-4 overflow-y-auto text-sm ${embedded ? 'p-3' : 'p-4'}`}>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <Stat label="Raporlanan süre" value={<span className={msClass(st.ms)}>{fmtMs(st.ms)}</span>} />
+        <Stat label="Kendi süresi" value={<span className={msClass(st.exclMs)}>{fmtMs(st.exclMs)}</span>} />
+        <Stat label="Kaynak satırı" value={st.srcLine} />
+        <Stat label="Dosya satırı" value={editorLine(parsed, st.fileLine).toLocaleString('tr-TR')} />
+      </div>
+
+      <Block title="Kod">{st.sql ? formatSql(st.code) : st.code}</Block>
+      {st.trail && <Block title="Değerlendirme">{st.trail}</Block>}
+
+      {st.sql && (
+        <div className="space-y-3">
+          <div className="flex flex-wrap gap-2">
+            <span className={`chip ${st.sql.cached ? 'bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300' : 'bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300'}`}>
+              {st.sql.cached ? 'Önbellekten' : 'Veritabanı'}
+            </span>
+            {st.sql.rows !== undefined && <span className="chip bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">{st.sql.rows} satır döndü</span>}
+            {st.sql.tables.map((t) => (
+              <span key={t} className="chip bg-slate-100 font-mono text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                {t}
               </span>
             ))}
           </div>
-
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <Stat label="Raporlanan süre" value={<span className={msClass(st.ms)}>{fmtMs(st.ms)}</span>} />
-            <Stat label="Kendi süresi" value={<span className={msClass(st.exclMs)}>{fmtMs(st.exclMs)}</span>} />
-            <Stat label="Kaynak satırı" value={st.srcLine} />
-            <Stat label="Dosya satırı" value={st.fileLine.toLocaleString('tr-TR')} />
-          </div>
-
-          <Block title="Kod">{st.sql ? formatSql(st.code) : st.code}</Block>
-          {st.trail && <Block title="Değerlendirme">{st.trail}</Block>}
-
-          {st.sql && (
-            <div className="space-y-3">
-              <div className="flex flex-wrap gap-2">
-                <span className={`chip ${st.sql.cached ? 'bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300' : 'bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300'}`}>
-                  {st.sql.cached ? 'Önbellekten' : 'Veritabanı'}
-                </span>
-                {st.sql.rows !== undefined && <span className="chip bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">{st.sql.rows} satır döndü</span>}
-                {st.sql.tables.map((t) => (
-                  <span key={t} className="chip bg-slate-100 font-mono text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                    {t}
-                  </span>
-                ))}
-              </div>
-              {st.sql.resolved && <Block title="Veritabanına giden sorgu">{formatSql(st.sql.resolved)}</Block>}
-            </div>
-          )}
-
-          {st.message && (
-            <Block title={`Mesaj ${st.message.module} ${st.message.type}${st.message.number}`}>{st.message.text}</Block>
-          )}
-
-          {(st.loopRows !== undefined || st.iterations) && (
-            <div className="text-xs text-slate-600 dark:text-slate-400">
-              {st.loopRows !== undefined && <>Tablo satırı: {st.loopRows} · </>}
-              Çalışan iterasyon: {st.iterations ?? 0}
-            </div>
-          )}
-
-          {loop && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
-              Bu satır bir döngü içinde çalıştı:{' '}
-              <button className="font-mono underline" onClick={() => nav.select(loop.id)}>
-                {loop.code.split('\n')[0].slice(0, 120)}
-              </button>
-            </div>
-          )}
-
-          {st.details.length > 0 && <Block title="Ayrıntılar">{st.details.join('\n')}</Block>}
-
-          <div className="flex flex-wrap gap-2 pt-2">
-            <button className="btn-outline" onClick={() => nav.revealInTree(st.id)}>
-              <GitBranch className="h-4 w-4" /> Ağaçta göster
-            </button>
-            <button className="btn-outline" onClick={() => nav.openRaw(st.fileLine)}>
-              <FileText className="h-4 w-4" /> {embedded ? 'Editörde göster' : 'Ham dosyada aç'}
-            </button>
-          </div>
+          {st.sql.resolved && <Block title="Veritabanına giden sorgu">{formatSql(st.sql.resolved)}</Block>}
         </div>
-      </aside>
+      )}
+
+      {st.message && <Block title={`Mesaj ${st.message.module} ${st.message.type}${st.message.number}`}>{st.message.text}</Block>}
+
+      {(st.loopRows !== undefined || st.iterations) && (
+        <div className="text-xs text-slate-600 dark:text-slate-400">
+          {st.loopRows !== undefined && <>Tablo satırı: {st.loopRows} · </>}
+          Çalışan iterasyon: {st.iterations ?? 0}
+        </div>
+      )}
+
+      {loop && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
+          Bu satır bir döngü içinde çalıştı:{' '}
+          <button className="font-mono underline" onClick={() => nav.select(loop.id)}>
+            {loop.code.split('\n')[0].slice(0, 120)}
+          </button>
+        </div>
+      )}
+
+      {st.details.length > 0 && <Block title="Ayrıntılar">{st.details.join('\n')}</Block>}
     </div>
+  )
+
+  if (slideOver)
+    return (
+      <div className="fixed inset-0 z-40 flex justify-end bg-slate-900/20 backdrop-blur-[1px] dark:bg-black/40" onClick={onClose}>
+        <aside
+          className="flex h-full w-full max-w-2xl flex-col border-l border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-slate-900"
+          onClick={(e) => e.stopPropagation()}
+          aria-label="Satır ayrıntısı"
+        >
+          {header}
+          {body}
+        </aside>
+      </div>
+    )
+
+  return (
+    <section
+      ref={pane}
+      className="relative flex shrink-0 flex-col border-t border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
+      style={{ height: `min(${height}px, calc(100% - ${KEEP_ABOVE}px))`, minHeight: MIN_H }}
+      aria-label="Satır ayrıntısı"
+    >
+      <ResizeHandle
+        axis="y"
+        className="inset-x-0 -top-2 h-4"
+        title="Yüksekliği değiştirmek için sürükleyin · çift tıklayınca varsayılana döner"
+        onStart={onStart}
+        onDrag={onDrag}
+        onEnd={() => saveHeight(height)}
+        onReset={resetHeight}
+      />
+      {header}
+      {body}
+    </section>
   )
 }
 
 function Stat({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-800/60">
+    <div className="rounded-lg bg-slate-50 px-3 py-1.5 dark:bg-slate-800/60">
       <div className="text-[11px] text-slate-500">{label}</div>
       <div className="font-semibold tabular-nums">{value}</div>
     </div>
@@ -134,9 +224,9 @@ function Block({ title, children }: { title: string; children: React.ReactNode }
   return (
     <div>
       <div className="mb-1 text-xs font-medium text-slate-500">{title}</div>
-      <pre className="scroll-thin max-h-80 overflow-auto rounded-lg bg-slate-50 p-3 font-mono text-xs leading-relaxed break-words whitespace-pre-wrap text-slate-800 dark:bg-slate-950 dark:text-slate-200">
+      <CodeBlock className="scroll-thin max-h-80 overflow-auto rounded-lg bg-slate-50 p-3 font-mono text-xs leading-relaxed break-words whitespace-pre-wrap text-slate-800 dark:bg-slate-950 dark:text-slate-200">
         {children}
-      </pre>
+      </CodeBlock>
     </div>
   )
 }

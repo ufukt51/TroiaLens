@@ -1,9 +1,10 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, Database, FileText, GitBranch, LayoutDashboard, MessageSquare, Repeat } from 'lucide-react'
 import type { LoadedTrace } from '../lib/types.ts'
 import { parseFileName } from '../lib/run.ts'
 import { fmtMs } from '../lib/analyze.ts'
-import { postToHost } from '../lib/host.ts'
+import { onHostMessage, postToHost } from '../lib/host.ts'
+import { markFor, refAtLine } from '../lib/locate.ts'
 import { Overview } from '../components/analysis/Overview.tsx'
 import { CallTree } from '../components/analysis/CallTree.tsx'
 import { SqlView } from '../components/analysis/SqlView.tsx'
@@ -11,13 +12,36 @@ import { RepeatsView } from '../components/analysis/RepeatsView.tsx'
 import { MessagesView } from '../components/analysis/MessagesView.tsx'
 import { RawView } from '../components/analysis/RawView.tsx'
 import { StatementDetail } from '../components/analysis/StatementDetail.tsx'
+import { SourcePane } from '../components/analysis/SourcePane.tsx'
 import { ScoreDot } from '../components/ui.tsx'
 
-export type Tab = 'overview' | 'tree' | 'sql' | 'repeats' | 'messages' | 'raw'
+const SLIDE_OVER_KEY = 'troialens.detailSlideOver'
+
+function savedSlideOver(): boolean {
+  try {
+    return localStorage.getItem(SLIDE_OVER_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+export type Tab ='overview' | 'tree' | 'sql' | 'repeats' | 'messages' | 'raw'
+
+/** Selected call tree row: >= 0 statement, < 0 scope encoded as ~id. A new nonce scrolls the tree to it. */
+export interface Cursor {
+  ref: number
+  nonce: number
+  /** Also expand the scope (when revealed from another view) */
+  open?: boolean
+}
 
 export interface Nav {
-  /** Opens the detail panel for a statement (in Notepad++ also moves the editor caret to it) */
+  /** Opens the detail pane for a statement (in Notepad++ also moves the editor caret to it) */
   select: (stmtId: number) => void
+  /** Selects a tree row; the editor (Notepad++) or the source pane (browser) follows it */
+  pick: (ref: number) => void
+  /** Clears the tree selection and its highlights */
+  unpick: () => void
   /** Switches to the call tree and reveals the statement (>= 0) or scope (encoded ~id) */
   revealInTree: (ref: number) => void
   /** Shows a file line: the raw view in the browser, the editor in Notepad++ */
@@ -30,11 +54,24 @@ export interface Nav {
  * Fills its container's height. `embedded` is the Notepad++ panel: compact header, no raw view
  * (the editor itself shows the file) and line jumps go to the editor.
  */
-export function AnalysisPage({ trace, embedded }: { trace: LoadedTrace; embedded: boolean }) {
+export function AnalysisPage({
+  trace,
+  embedded,
+  detailSlideOver,
+}: {
+  trace: LoadedTrace
+  embedded: boolean
+  /** Statement detail slides over from the right instead of docking under the views (Notepad++ setting) */
+  detailSlideOver?: boolean
+}) {
   const { parsed, analysis } = trace.result
   const [tab, setTab] = useState<Tab>('overview')
-  const [selected, setSelected] = useState<number | null>(null)
-  const [treeTarget, setTreeTarget] = useState<{ ref: number; nonce: number } | null>(null)
+  const [detail, setDetail] = useState<number | null>(null)
+  const [slideOver, setSlideOver] = useState(() => detailSlideOver ?? savedSlideOver())
+  useEffect(() => {
+    if (detailSlideOver !== undefined) setSlideOver(detailSlideOver)
+  }, [detailSlideOver])
+  const [cursor, setCursor] = useState<Cursor | null>(null)
   const [rawTarget, setRawTarget] = useState<{ line: number; nonce: number } | null>(null)
 
   const lineIndex = useMemo(() => {
@@ -43,16 +80,40 @@ export function AnalysisPage({ trace, embedded }: { trace: LoadedTrace; embedded
     return m
   }, [parsed])
 
-  const nav: Nav = useMemo(
-    () => ({
+  const lines = useMemo(() => (embedded ? [] : trace.text.split(/\r?\n/)), [trace.text, embedded])
+
+  const nav: Nav = useMemo(() => {
+    // In Notepad++ the editor is the source view: move its caret to the row and mark the row's method there
+    const follow = (ref: number) => {
+      if (!embedded) return
+      const m = markFor(parsed, ref)
+      postToHost({ type: 'gotoLine', line: m.line, focus: false })
+      postToHost({ type: 'mark', ...m })
+    }
+    return {
       select: (id) => {
-        setSelected(id)
-        const st = parsed.statements[id]
-        if (embedded && st) postToHost({ type: 'gotoLine', line: st.fileLine, focus: false })
+        if (!parsed.statements[id]) return
+        setDetail(id)
+        setCursor({ ref: id, nonce: Date.now() })
+        follow(id)
+      },
+      pick: (ref) => {
+        setCursor({ ref, nonce: Date.now() })
+        follow(ref)
+        if (ref < 0) return
+        // An open detail pane follows the selection; narrow browser windows have no room for the source pane,
+        // so the detail pane takes its place
+        const open = !embedded && !matchMedia('(min-width: 1024px)').matches
+        setDetail((d) => (d !== null || open ? ref : d))
+      },
+      unpick: () => {
+        setCursor(null)
+        if (embedded) postToHost({ type: 'clearMarks' })
       },
       revealInTree: (ref) => {
-        setTreeTarget({ ref, nonce: Date.now() })
+        setCursor({ ref, nonce: Date.now(), open: true })
         setTab('tree')
+        follow(ref)
       },
       openRaw: (line) => {
         if (embedded) {
@@ -63,9 +124,31 @@ export function AnalysisPage({ trace, embedded }: { trace: LoadedTrace; embedded
         setTab('raw')
       },
       stmtAtLine: (line) => lineIndex.get(line) ?? -1,
-    }),
-    [lineIndex, parsed, embedded],
-  )
+    }
+  }, [lineIndex, parsed, embedded])
+
+  // Notepad++: moving the editor caret selects the matching row while the call tree is open
+  const tabRef = useRef(tab)
+  tabRef.current = tab
+  useEffect(() => {
+    if (!embedded) return
+    let timer = 0
+    const off = onHostMessage((msg) => {
+      if (msg.type !== 'caret' || tabRef.current !== 'tree') return
+      clearTimeout(timer)
+      timer = window.setTimeout(() => {
+        const ref = refAtLine(parsed, msg.line)
+        if (ref === null) return
+        setCursor((c) => (c?.ref === ref ? c : { ref, nonce: Date.now() }))
+        if (ref >= 0) setDetail((d) => (d === null ? d : ref))
+        postToHost({ type: 'mark', ...markFor(parsed, ref) })
+      }, 60)
+    })
+    return () => {
+      off()
+      clearTimeout(timer)
+    }
+  }, [embedded, parsed])
 
   const fromName = parseFileName(trace.name)
   const info = analysis.info
@@ -83,7 +166,19 @@ export function AnalysisPage({ trace, embedded }: { trace: LoadedTrace; embedded
   ]
   if (!embedded) tabs.push({ id: 'raw', label: 'Ham dosya', icon: FileText })
 
-  const close = useCallback(() => setSelected(null), [])
+  const close = useCallback(() => setDetail(null), [])
+  // Notepad++ keeps the choice in its settings (and ticks its menu item); the browser remembers it locally
+  const toggleSlideOver = () => {
+    const on = !slideOver
+    setSlideOver(on)
+    if (embedded) postToHost({ type: 'setPrefs', detailSlideOver: on })
+    else
+      try {
+        localStorage.setItem(SLIDE_OVER_KEY, on ? '1' : '0')
+      } catch {
+        // Not remembered then
+      }
+  }
   const fills = tab === 'tree' || tab === 'raw'
 
   return (
@@ -144,14 +239,29 @@ export function AnalysisPage({ trace, embedded }: { trace: LoadedTrace; embedded
 
       <div className={`min-h-0 min-w-0 flex-1 ${embedded ? 'p-3' : 'p-4'} ${fills ? 'flex flex-col' : 'scroll-thin overflow-y-auto'}`}>
         {tab === 'overview' && <Overview result={trace.result} nav={nav} goTab={setTab} />}
-        {tab === 'tree' && <CallTree parsed={parsed} nav={nav} target={treeTarget} selected={selected} />}
+        {tab === 'tree' && (
+          <div className="flex min-h-0 flex-1 gap-4">
+            <CallTree parsed={parsed} nav={nav} cursor={cursor} />
+            {!embedded && cursor && <SourcePane lines={lines} parsed={parsed} cursor={cursor} nav={nav} />}
+          </div>
+        )}
         {tab === 'sql' && <SqlView result={trace.result} nav={nav} />}
         {tab === 'repeats' && <RepeatsView result={trace.result} nav={nav} />}
         {tab === 'messages' && <MessagesView result={trace.result} nav={nav} />}
-        {tab === 'raw' && !embedded && <RawView text={trace.text} nav={nav} target={rawTarget} />}
+        {tab === 'raw' && !embedded && <RawView lines={lines} parsed={parsed} nav={nav} target={rawTarget} />}
       </div>
 
-      {selected !== null && <StatementDetail parsed={parsed} stmtId={selected} nav={nav} onClose={close} embedded={embedded} />}
+      {detail !== null && (
+        <StatementDetail
+          parsed={parsed}
+          stmtId={detail}
+          nav={nav}
+          onClose={close}
+          embedded={embedded}
+          slideOver={slideOver}
+          onToggleSlideOver={toggleSlideOver}
+        />
+      )}
     </div>
   )
 }
