@@ -3,7 +3,7 @@ import { ChevronDown, ChevronRight, Database, Search } from 'lucide-react'
 import type { SqlGroup, TraceResult } from '../../lib/types.ts'
 import type { Nav } from '../../pages/AnalysisPage.tsx'
 import { fmtMs } from '../../lib/analyze.ts'
-import { Bar, Empty, Kpi, SectionTitle, formatSql, msClass } from '../ui.tsx'
+import { Bar, CodeBlock, Empty, Kpi, SectionTitle, formatSql, msClass } from '../ui.tsx'
 
 type SortKey = 'totalMs' | 'count' | 'dbHits' | 'rows'
 
@@ -141,9 +141,9 @@ function SqlGroupRow({ g, maxMs, open, toggle, result, nav }: { g: SqlGroup; max
       </button>
       {open && (
         <div className="space-y-2 bg-slate-50/70 px-4 py-3 dark:bg-slate-950/40">
-          <pre className="scroll-thin overflow-x-auto rounded-md bg-white p-3 font-mono text-[11px] leading-relaxed text-slate-700 dark:bg-slate-900 dark:text-slate-300">
+          <CodeBlock className="scroll-thin overflow-x-auto rounded-md bg-white p-3 font-mono text-[11px] leading-relaxed text-slate-700 dark:bg-slate-900 dark:text-slate-300">
             {formatSql(g.normalized)}
-          </pre>
+          </CodeBlock>
           <div className="max-h-80 overflow-y-auto">
             <table className="w-full text-xs">
               <thead>

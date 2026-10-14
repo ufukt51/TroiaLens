@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type ReactNode, type UIEvent } from 'react'
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode, type UIEvent } from 'react'
+import { Check, Copy, GripHorizontal, GripVertical } from 'lucide-react'
 import type { Severity, StmtKind } from '../lib/types.ts'
 
 export const KIND_META: Record<StmtKind, { label: string; cls: string }> = {
@@ -145,4 +146,130 @@ export function ScoreDot({ score, size = 'sm' }: { score: number; size?: 'sm' | 
     score >= 90 ? 'bg-emerald-500' : score >= 75 ? 'bg-brand-500' : score >= 50 ? 'bg-amber-500' : 'bg-rose-500'
   const dims = size === 'lg' ? 'h-12 w-12 text-base' : 'h-9 w-9 text-xs'
   return <div className={`flex shrink-0 items-center justify-center rounded-full font-semibold text-white ${color} ${dims}`}>{score}</div>
+}
+
+async function copyText(text: string) {
+  try {
+    await navigator.clipboard.writeText(text)
+    return
+  } catch {
+    // Clipboard API refused (no secure context or permission); fall back to a selection copy
+  }
+  const area = document.createElement('textarea')
+  area.value = text
+  area.style.position = 'fixed'
+  area.style.opacity = '0'
+  document.body.appendChild(area)
+  area.select()
+  document.execCommand('copy')
+  area.remove()
+}
+
+/**
+ * Drag handle on a pane edge: axis 'x' sits on a left edge and drags sideways, 'y' on a top edge and drags up
+ * and down. Uses the system resize cursors and shows a grip; the line along the edge lights up while hovered
+ * or dragged. Double click calls onReset.
+ */
+export function ResizeHandle({
+  axis,
+  className = '',
+  title,
+  onStart,
+  onDrag,
+  onEnd,
+  onReset,
+}: {
+  axis: 'x' | 'y'
+  className?: string
+  title: string
+  onStart: () => void
+  /** Pointer movement since the drag began */
+  onDrag: (delta: number) => void
+  onEnd: () => void
+  onReset?: () => void
+}) {
+  const start = useRef<number | null>(null)
+  const [active, setActive] = useState(false)
+  const x = axis === 'x'
+  const Grip = x ? GripVertical : GripHorizontal
+  const pos = (e: ReactPointerEvent) => (x ? e.clientX : e.clientY)
+  const end = () => {
+    if (start.current === null) return
+    start.current = null
+    setActive(false)
+    onEnd()
+  }
+
+  return (
+    <div
+      role="separator"
+      aria-orientation={x ? 'vertical' : 'horizontal'}
+      title={title}
+      className={`group absolute z-10 flex touch-none items-center justify-center select-none ${x ? 'cursor-ew-resize' : 'cursor-ns-resize'} ${className}`}
+      onPointerDown={(e) => {
+        if (e.button !== 0) return
+        e.preventDefault()
+        e.currentTarget.setPointerCapture(e.pointerId)
+        start.current = pos(e)
+        setActive(true)
+        onStart()
+      }}
+      onPointerMove={(e) => start.current !== null && onDrag(pos(e) - start.current)}
+      onPointerUp={end}
+      onPointerCancel={end}
+      onDoubleClick={onReset}
+    >
+      <span
+        className={`absolute rounded-full transition-colors ${x ? 'inset-y-0 left-1/2 w-0.5 -translate-x-1/2' : 'inset-x-0 top-1/2 h-0.5 -translate-y-1/2'} ${
+          active ? 'bg-brand-500' : 'bg-transparent group-hover:bg-brand-500/60'
+        }`}
+      />
+      <span
+        className={`relative flex items-center justify-center rounded-md border shadow-sm transition-colors ${x ? 'h-8 w-3.5' : 'h-3.5 w-8'} ${
+          active
+            ? 'border-brand-500 bg-brand-500 text-white'
+            : 'border-slate-200 bg-white text-slate-400 group-hover:border-brand-400 group-hover:text-brand-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500 dark:group-hover:border-brand-500 dark:group-hover:text-brand-300'
+        }`}
+      >
+        <Grip className="h-3 w-3" />
+      </span>
+    </div>
+  )
+}
+
+/** A <pre> with a copy button at its top right; copies the text as shown. */
+export function CodeBlock({ className = '', children }: { className?: string; children: ReactNode }) {
+  const pre = useRef<HTMLPreElement>(null)
+  const [copied, setCopied] = useState(false)
+  useEffect(() => {
+    if (!copied) return
+    const t = setTimeout(() => setCopied(false), 1500)
+    return () => clearTimeout(t)
+  }, [copied])
+
+  const copy = async () => {
+    await copyText(pre.current?.textContent ?? '')
+    setCopied(true)
+  }
+
+  return (
+    <div className="group relative">
+      <pre ref={pre} className={`pr-10 ${className}`}>
+        {children}
+      </pre>
+      <button
+        type="button"
+        onClick={copy}
+        className={`absolute top-1.5 right-1.5 rounded-md border p-1 transition ${
+          copied
+            ? 'border-emerald-300 bg-emerald-50 text-emerald-600 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-400'
+            : 'border-slate-200 bg-white/90 text-slate-400 opacity-70 group-hover:opacity-100 hover:text-brand-600 dark:border-slate-700 dark:bg-slate-900/90 dark:hover:text-brand-300'
+        }`}
+        title={copied ? 'Kopyalandı' : 'Kopyala'}
+        aria-label={copied ? 'Kopyalandı' : 'Kopyala'}
+      >
+        {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+      </button>
+    </div>
+  )
 }
