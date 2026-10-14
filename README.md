@@ -10,7 +10,10 @@
 
 Canias ERP'nin ürettiği **TROIA CODE EXECUTION TRACE** dosyalarını analiz eden web uygulaması.
 
-- Çağrı ağacı: event, metot ve sınıf çağrıları, her düğümün süresi ve SQL sayısı.
+- Çağrı ağacı: event, metot ve sınıf çağrıları, her düğümün süresi ve SQL sayısı. Açılacak seviye ↑↓ ile seçilir.
+- Kaynak görünümü: ağaçta seçilen satır, metot bloğu işaretli olarak trace dosyasında. Kenarından sürüklenerek
+  genişletilir, tek tıkla ekranı kaplar.
+- Satır ayrıntısı alt bölmede ya da sağda kayan panelde (başlıktaki düğmeyle geçilir); kod bloklarında kopyala düğmesi.
 - SQL analizi: sorgular parametresiz haliyle gruplanır, veritabanı ve önbellek isabetleri ayrılır.
 - N+1 tespiti: aynı döngü çalışmasında tekrar eden sorgu ve metot çağrıları.
 - Sağlık skoru: 0–100 arası skor ve öneri listesi.
@@ -27,7 +30,7 @@ Görüntüler `public/sample-trace.txt` örnek dosyasıyla alındı (uydurma ver
 | | |
 |---|---|
 | ![Ana sayfa](docs/screenshots/home.png) | ![Çağrı ağacı ve satır detayı](docs/screenshots/call-tree.png) |
-| Ana sayfa | Çağrı ağacı ve satır detayı |
+| Ana sayfa | Çağrı ağacı, kaynak görünümü ve alttaki satır ayrıntısı |
 | ![SQL analizi](docs/screenshots/sql.png) | ![Tekrarlar ve N+1](docs/screenshots/repeats.png) |
 | SQL analizi | Tekrarlar ve N+1 |
 | ![Koyu tema](docs/screenshots/overview-dark.png) | |
@@ -62,12 +65,13 @@ src/lib/worker.ts        Parser + analizi Web Worker'da çalıştırır
 src/lib/run.ts           Worker çağrısı, dosya okuma (UTF-8 / windows-1254), dosya adı çözümleme
 src/lib/storage.ts       Geçmiş (IndexedDB)
 src/lib/host.ts          Gömülü mod köprüsü (WebView2), inHost()
+src/lib/locate.ts        Ağaç satırı ↔ dosya satırı eşlemesi, editör işaretleri, tek başına CR düzeltmesi
 src/App.tsx              inHost() ? EmbeddedApp : StandaloneApp
 src/apps/StandaloneApp   Tarayıcı uygulaması: hash router #/  #/analiz  #/gecmis
 src/apps/EmbeddedApp     Gömülü mod: içerik host uygulamadan gelir
 src/pages/               Home, AnalysisPage, History
-src/components/analysis  Overview, CallTree, SqlView, RepeatsView, MessagesView, RawView, StatementDetail
-src/components/ui.tsx    Ortak parçalar + VirtualList (sabit satır yüksekliği)
+src/components/analysis  Overview, CallTree, SourcePane, SqlView, RepeatsView, MessagesView, RawView, StatementDetail
+src/components/ui.tsx    Ortak parçalar: VirtualList (sabit satır yüksekliği), CodeBlock, ResizeHandle
 scripts/parse-check.ts   Komut satırından parser testi
 scripts/make-sample.ts   public/sample-trace.txt üretir (uydurma veri)
 samples/                 Gerçek trace'ler — repoda yok, bkz. "Test"
@@ -81,8 +85,8 @@ Analiz ekranı ve tüm görünümler iki modda aynıdır; aradaki fark `Analysis
 
 | Yön | Mesaj |
 |---|---|
-| sayfa → host | `{ type: 'ready' }`, `{ type: 'gotoLine', line, focus }`, `{ type: 'reload' }` |
-| host → sayfa | `{ type: 'theme', dark }`, `{ type: 'load', name, text }`, `{ type: 'loadUrl', name, url }`, `{ type: 'notTrace', name }`, `{ type: 'empty' }` |
+| sayfa → host | `{ type: 'ready' }`, `{ type: 'gotoLine', line, focus }`, `{ type: 'mark', from, to, line, lineEnd, word }`, `{ type: 'clearMarks' }`, `{ type: 'reload' }`, `{ type: 'setPrefs', detailSlideOver }` |
+| host → sayfa | `{ type: 'theme', dark }`, `{ type: 'prefs', detailSlideOver }`, `{ type: 'load', name, text }`, `{ type: 'loadUrl', name, url }`, `{ type: 'notTrace', name }`, `{ type: 'empty' }`, `{ type: 'caret', line }` |
 
 - Host metni ancak `ready` mesajından sonra gönderir. Büyük dosyalarda `loadUrl` tercih edilir; sayfa metni `fetch(url)` ile okur.
 - `line` 1 tabanlıdır ve parser'ın saydığı dosya satırıdır (`\r?\n` ile bölünmüş).
