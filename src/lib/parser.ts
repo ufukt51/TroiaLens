@@ -171,7 +171,12 @@ interface OpenScope {
  */
 export function parseTrace(text: string): ParsedTrace {
   // Bare CRs occur inside multi-line SQL source; only CRLF / LF end a trace line
-  const lines = text.split(/\r?\n/).map((l) => (l.includes('\r') ? l.replace(/\r/g, ' ') : l))
+  const crBreaks: number[] = []
+  const lines = text.split(/\r?\n/).map((l, i) => {
+    if (!l.includes('\r')) return l
+    for (let j = l.indexOf('\r'); j !== -1; j = l.indexOf('\r', j + 1)) crBreaks.push(i + 1)
+    return l.replace(/\r/g, ' ')
+  })
   const warnings: string[] = []
 
   let bodyStart = lines.findIndex((l) => SEPARATOR_END_RE.test(l))
@@ -411,7 +416,7 @@ export function parseTrace(text: string): ParsedTrace {
   if (statements.length === 0) warnings.push('Dosyada trace satırı bulunamadı. Bu bir Troia trace dosyası mı?')
   if (implicitCount > 0) warnings.push(`${implicitCount} scope, başlangıç satırı olmadan bulundu (trace bir çağrının ortasında başlamış olabilir).`)
 
-  return { meta, scopes, statements, lineCount: lines.length, bodyStartLine: bodyStart + 1, warnings }
+  return { meta, scopes, statements, lineCount: lines.length, bodyStartLine: bodyStart + 1, crBreaks, warnings }
 }
 
 /**

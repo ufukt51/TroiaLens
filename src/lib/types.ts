@@ -98,6 +98,8 @@ export interface ParsedTrace {
   statements: Statement[]
   lineCount: number
   bodyStartLine: number
+  /** Trace line of every bare CR, ascending. Editors (Notepad++) break lines there too; see editorLine */
+  crBreaks: number[]
   warnings: string[]
 }
 

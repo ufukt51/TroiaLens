@@ -2,6 +2,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { parseTrace } from '../src/lib/parser.ts'
 import { analyze } from '../src/lib/analyze.ts'
+import { refAtLine } from '../src/lib/locate.ts'
 
 // Known results for the test traces. A change here must be deliberate.
 // Real traces and their expectations live in samples/ (not committed): samples/expected.json
@@ -37,6 +38,16 @@ for (const file of targets) {
       if (k === 'match') continue
       if (actual[k] !== v) failures.push(`${file}: ${k} beklenen ${v}, bulunan ${actual[k]}`)
     }
+  }
+  // Editor caret -> tree row must land on the row that printed the line
+  for (const st of p.statements) {
+    const ref = refAtLine(p, st.fileLine)
+    if (ref !== st.id) { failures.push(`${file}: satır ${st.fileLine} ifade ${st.id} yerine ${ref} buldu`); break }
+  }
+  for (const s of p.scopes) {
+    if (s.id === 0 || s.implicit || p.statements.some((st) => st.fileLine === s.startLine)) continue
+    const ref = refAtLine(p, s.startLine)
+    if (ref !== ~s.id) { failures.push(`${file}: satır ${s.startLine} kapsam ${s.id} yerine ${ref} buldu`); break }
   }
   const show = (id: number, ind = '') => {
     const s = p.scopes[id]
