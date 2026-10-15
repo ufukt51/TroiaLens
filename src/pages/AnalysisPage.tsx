@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, Database, FileText, GitBranch, LayoutDashboard, MessageSquare, Repeat } from 'lucide-react'
+import { AlertTriangle, CircleAlert, Database, FileText, GitBranch, LayoutDashboard, MessageSquare, Repeat } from 'lucide-react'
 import type { LoadedTrace } from '../lib/types.ts'
 import { parseFileName } from '../lib/run.ts'
 import { fmtMs } from '../lib/analyze.ts'
 import { onHostMessage, postToHost } from '../lib/host.ts'
-import { markFor, refAtLine } from '../lib/locate.ts'
+import { markFor, refAtLine, type Mark } from '../lib/locate.ts'
 import { Overview } from '../components/analysis/Overview.tsx'
 import { CallTree } from '../components/analysis/CallTree.tsx'
 import { SqlView } from '../components/analysis/SqlView.tsx'
 import { RepeatsView } from '../components/analysis/RepeatsView.tsx'
 import { MessagesView } from '../components/analysis/MessagesView.tsx'
+import { IssuesView } from '../components/analysis/IssuesView.tsx'
 import { RawView } from '../components/analysis/RawView.tsx'
 import { StatementDetail } from '../components/analysis/StatementDetail.tsx'
 import { SourcePane } from '../components/analysis/SourcePane.tsx'
@@ -25,7 +26,7 @@ function savedSlideOver(): boolean {
   }
 }
 
-export type Tab ='overview' | 'tree' | 'sql' | 'repeats' | 'messages' | 'raw'
+export type Tab = 'overview' | 'tree' | 'sql' | 'repeats' | 'messages' | 'issues' | 'raw'
 
 /** Selected call tree row: >= 0 statement, < 0 scope encoded as ~id. A new nonce scrolls the tree to it. */
 export interface Cursor {
@@ -46,6 +47,8 @@ export interface Nav {
   revealInTree: (ref: number) => void
   /** Shows a file line: the raw view in the browser, the editor in Notepad++ */
   openRaw: (fileLine: number) => void
+  /** Notepad++: moves the editor caret to the mark's line (keeping focus in the panel) and marks it there */
+  showInEditor: (m: Mark) => void
   /** Finds the statement printed at a file line, if any */
   stmtAtLine: (fileLine: number) => number
 }
@@ -72,6 +75,8 @@ export function AnalysisPage({
     if (detailSlideOver !== undefined) setSlideOver(detailSlideOver)
   }, [detailSlideOver])
   const [cursor, setCursor] = useState<Cursor | null>(null)
+  const [issuesOpened, setIssuesOpened] = useState(false)
+  if (tab === 'issues' && !issuesOpened) setIssuesOpened(true)
   const [rawTarget, setRawTarget] = useState<{ line: number; nonce: number } | null>(null)
 
   const lineIndex = useMemo(() => {
@@ -123,6 +128,11 @@ export function AnalysisPage({
         setRawTarget({ line, nonce: Date.now() })
         setTab('raw')
       },
+      showInEditor: (m) => {
+        if (!embedded) return
+        postToHost({ type: 'gotoLine', line: m.line, focus: false })
+        postToHost({ type: 'mark', ...m })
+      },
       stmtAtLine: (line) => lineIndex.get(line) ?? -1,
     }
   }, [lineIndex, parsed, embedded])
@@ -157,12 +167,13 @@ export function AnalysisPage({
   const date = info['Trace Date'] ?? fromName.date
   const t = analysis.totals
 
-  const tabs: { id: Tab; label: string; icon: typeof FileText; count?: number }[] = [
+  const tabs: { id: Tab; label: string; icon: typeof FileText; count?: number; alert?: boolean }[] = [
     { id: 'overview', label: 'Özet', icon: LayoutDashboard },
     { id: 'tree', label: 'Çağrı ağacı', icon: GitBranch, count: t.scopes },
     { id: 'sql', label: 'SQL', icon: Database, count: t.sql },
     { id: 'repeats', label: embedded ? 'Tekrarlar' : 'Tekrarlar / N+1', icon: Repeat, count: analysis.repeats.length },
     { id: 'messages', label: 'Mesajlar', icon: MessageSquare, count: t.messages },
+    { id: 'issues', label: 'Hata/Uyarı', icon: CircleAlert, count: t.traceErrors + t.traceWarnings + t.missingParams + t.errors + t.warnings, alert: t.traceErrors + t.errors > 0 },
   ]
   if (!embedded) tabs.push({ id: 'raw', label: 'Ham dosya', icon: FileText })
 
@@ -179,7 +190,7 @@ export function AnalysisPage({
         // Not remembered then
       }
   }
-  const fills = tab === 'tree' || tab === 'raw'
+  const fills = tab === 'tree' || tab === 'issues' || tab === 'raw'
 
   return (
     <div className={`flex h-full flex-col ${embedded ? '' : 'mx-auto w-full max-w-[1600px]'}`}>
@@ -213,23 +224,32 @@ export function AnalysisPage({
           embedded ? 'gap-0.5 px-2' : 'gap-1 px-4'
         }`}
       >
-        {tabs.map(({ id, label, icon: Icon, count }) => (
+        {tabs.map(({ id, label, icon: Icon, count, alert }) => (
           <button
             key={id}
             onClick={() => setTab(id)}
             title={label}
-            className={`-mb-px flex shrink-0 items-center border-b-2 font-medium transition ${
+            aria-current={tab === id ? 'page' : undefined}
+            className={`-mb-px flex shrink-0 items-center rounded-t-md border-b-2 transition ${
               embedded ? 'gap-1.5 px-2.5 py-2 text-[13px]' : 'gap-2 px-3 py-2.5 text-sm'
             } ${
               tab === id
-                ? 'border-brand-600 text-brand-700 dark:border-brand-400 dark:text-brand-300'
-                : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
+                ? 'border-brand-600 bg-brand-100/80 font-semibold text-brand-900 dark:border-brand-400 dark:bg-brand-500/10 dark:text-brand-300'
+                : 'border-transparent font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800/60 dark:hover:text-slate-200'
             }`}
           >
             <Icon className="h-4 w-4" />
             {label}
             {count !== undefined && count > 0 && (
-              <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] tabular-nums text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+              <span
+                className={`rounded-full px-1.5 py-0.5 text-[10px] tabular-nums ${
+                  alert
+                    ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300'
+                    : tab === id
+                      ? 'bg-brand-600 text-white dark:bg-brand-500/30 dark:text-brand-200'
+                      : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+                }`}
+              >
                 {count.toLocaleString('tr-TR')}
               </span>
             )}
@@ -242,12 +262,30 @@ export function AnalysisPage({
         {tab === 'tree' && (
           <div className="flex min-h-0 flex-1 gap-4">
             <CallTree parsed={parsed} nav={nav} cursor={cursor} />
-            {!embedded && cursor && <SourcePane lines={lines} parsed={parsed} cursor={cursor} nav={nav} />}
+            {!embedded && cursor && (
+              <SourcePane
+                lines={lines}
+                mark={markFor(parsed, cursor.ref)}
+                nonce={cursor.nonce}
+                onClose={nav.unpick}
+                onLine={(n) => {
+                  const ref = refAtLine(parsed, n)
+                  if (ref !== null) nav.pick(ref)
+                }}
+                hint="Satıra tıklayınca ağaçta seçilir"
+              />
+            )}
           </div>
         )}
         {tab === 'sql' && <SqlView result={trace.result} nav={nav} />}
         {tab === 'repeats' && <RepeatsView result={trace.result} nav={nav} />}
         {tab === 'messages' && <MessagesView result={trace.result} nav={nav} />}
+        {/* Stays mounted once opened: narrow browser windows jump to the raw view and come back to the same place */}
+        {issuesOpened && (
+          <div className={tab === 'issues' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
+            <IssuesView key={trace.id} result={trace.result} nav={nav} lines={lines} embedded={embedded} />
+          </div>
+        )}
         {tab === 'raw' && !embedded && <RawView lines={lines} parsed={parsed} nav={nav} target={rawTarget} />}
       </div>
 

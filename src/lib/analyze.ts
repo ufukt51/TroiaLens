@@ -1,4 +1,4 @@
-import type { Analysis, Finding, HotLine, MethodStat, ParsedTrace, RepeatPattern, SqlGroup } from './types.ts'
+import type { Analysis, Finding, HotLine, MethodStat, ParsedTrace, RepeatPattern, SqlGroup, TraceIssue } from './types.ts'
 
 export const THRESHOLDS = {
   repeatInLoop: 5,
@@ -14,6 +14,11 @@ export function fmtMs(ms: number): string {
   if (ms >= 60000) return `${(ms / 60000).toFixed(1)} dk`
   if (ms >= 1000) return `${(ms / 1000).toFixed(ms >= 10000 ? 0 : 1)} sn`
   return `${Math.round(ms)} ms`
+}
+
+/** One line summary of an issue: its own text, else the last (most specific) line listed under it */
+export function issueText(i: TraceIssue): string {
+  return i.text || i.details[i.details.length - 1] || (i.kind === 'warning' ? 'Uyarı' : 'Hata')
 }
 
 function add(list: Finding[], f: Finding, cap: { used: number; max: number }) {
@@ -183,6 +188,8 @@ export function analyze(p: ParsedTrace): Analysis {
   // --- messages
   const messages = statements.filter((s) => s.message).map((s) => s.id)
   const errors = messages.filter((id) => statements[id].message!.type === 'E').length
+  const issueCount = { error: 0, warning: 0, missingParam: 0 }
+  for (const i of p.issues) issueCount[i.kind]++
 
   // --- totals
   const root = scopes[0]
@@ -198,6 +205,10 @@ export function analyze(p: ParsedTrace): Analysis {
     loops: statements.filter((s) => s.kind === 'loop' || s.kind === 'while').length,
     messages: messages.length,
     errors,
+    warnings: messages.filter((id) => statements[id].message!.type === 'W').length,
+    traceErrors: issueCount.error,
+    traceWarnings: issueCount.warning,
+    missingParams: issueCount.missingParam,
   }
 
   // --- health findings
@@ -289,6 +300,42 @@ export function analyze(p: ParsedTrace): Analysis {
       capMsg,
     )
   }
+  // Listed in the issues tab; they do not change the score
+  const firstIssue = (kind: string) => p.issues.find((i) => i.kind === kind)
+  if (issueCount.error) {
+    const f = firstIssue('error')!
+    findings.push({
+      id: 'trace-errors',
+      severity: 'warning',
+      title: `Çalışma hatası: ${issueCount.error}`,
+      detail: `Trace "Errors:" satırları içeriyor. İlki: ${issueText(f).slice(0, 160)}`,
+      penalty: 0,
+      fileLine: f.fileLine,
+    })
+  }
+  if (issueCount.warning) {
+    const f = firstIssue('warning')!
+    findings.push({
+      id: 'trace-warnings',
+      severity: 'info',
+      title: `Çalışma uyarısı: ${issueCount.warning}`,
+      detail: `İlki: ${issueText(f).slice(0, 160)}`,
+      penalty: 0,
+      fileLine: f.fileLine,
+    })
+  }
+  if (issueCount.missingParam) {
+    const f = firstIssue('missingParam')!
+    findings.push({
+      id: 'missing-params',
+      severity: 'info',
+      title: `Eksik parametre: ${issueCount.missingParam}`,
+      detail: `Metotlar bazı parametreleri almadan çağrılmış. İlki: ${p.scopes[f.scopeId].name} ${f.text}`,
+      penalty: 0,
+      fileLine: f.fileLine,
+    })
+  }
+
   const capHot = { used: 0, max: 10 }
   for (const h of hotLines) {
     const seqSearch = /LOCATERECORD\s+SEQUENTIAL/i.test(h.code)

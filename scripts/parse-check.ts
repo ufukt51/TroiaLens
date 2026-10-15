@@ -6,7 +6,7 @@ import { refAtLine } from '../src/lib/locate.ts'
 
 // Known results for the test traces. A change here must be deliberate.
 // Real traces and their expectations live in samples/ (not committed): samples/expected.json
-type Expected = { match: string; score: number; sql?: number; sqlDb?: number; sqlCache?: number; scopes?: number }
+type Expected = { match: string; score: number; sql?: number; sqlDb?: number; sqlCache?: number; scopes?: number; traceErrors?: number; missingParams?: number }
 const EXPECTED: Expected[] = [
   { match: 'sample-trace[.]txt$', score: 66 },
   ...(existsSync('samples/expected.json') ? (JSON.parse(readFileSync('samples/expected.json', 'utf8')) as Expected[]) : []),
@@ -33,7 +33,15 @@ for (const file of targets) {
   const exp = EXPECTED.find((e) => new RegExp(e.match).test(file))
   if (exp) {
     checked++
-    const actual: Record<string, number> = { score: a.score, sql: a.totals.sql, sqlDb: a.totals.sqlDb, sqlCache: a.totals.sqlCache, scopes: a.totals.scopes }
+    const actual: Record<string, number> = {
+      score: a.score,
+      sql: a.totals.sql,
+      sqlDb: a.totals.sqlDb,
+      sqlCache: a.totals.sqlCache,
+      scopes: a.totals.scopes,
+      traceErrors: a.totals.traceErrors,
+      missingParams: a.totals.missingParams,
+    }
     for (const [k, v] of Object.entries(exp)) {
       if (k === 'match') continue
       if (actual[k] !== v) failures.push(`${file}: ${k} beklenen ${v}, bulunan ${actual[k]}`)

@@ -92,10 +92,30 @@ export interface TraceMeta {
   classRefs: CrossRef[]
 }
 
+export type IssueKind = 'error' | 'warning' | 'missingParam'
+
+/** A runtime error, warning or missing parameter the trace printed as a detail line */
+export interface TraceIssue {
+  kind: IssueKind
+  /** Trace line the issue is printed on */
+  fileLine: number
+  /** Last trace line of the issue (lines listed under "Errors:") */
+  lineEnd: number
+  scopeId: number
+  /** Statement the issue belongs to, -1 if none */
+  stmtId: number
+  /** Error text, or the missing parameter as printed (NAME[value]) */
+  text: string
+  /** Lines listed under "Errors:" (" * ..."), without the bullet */
+  details: string[]
+}
+
 export interface ParsedTrace {
   meta: TraceMeta
   scopes: Scope[]
   statements: Statement[]
+  /** In file order */
+  issues: TraceIssue[]
   lineCount: number
   bodyStartLine: number
   /** Trace line of every bare CR, ascending. Editors (Notepad++) break lines there too; see editorLine */
@@ -185,6 +205,12 @@ export interface Analysis {
     loops: number
     messages: number
     errors: number
+    /** Warning MESSAGEs */
+    warnings: number
+    /** "Errors:" lines printed by the runtime */
+    traceErrors: number
+    traceWarnings: number
+    missingParams: number
   }
   methods: MethodStat[]
   hotLines: HotLine[]

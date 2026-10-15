@@ -7,6 +7,15 @@ import { Bar, CodeBlock, Empty, Kpi, SectionTitle, formatSql, msClass } from '..
 
 type SortKey = 'totalMs' | 'count' | 'dbHits' | 'rows'
 
+const VERB_ORDER = ['SELECT', 'INSERT', 'UPDATE', 'DELETE']
+const VERB_CLS: Record<string, string> = {
+  SELECT: 'bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300',
+  INSERT: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+  UPDATE: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
+  DELETE: 'bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300',
+}
+const verbCls = (verb: string) => VERB_CLS[verb] ?? 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+
 export function SqlView({ result, nav }: { result: TraceResult; nav: Nav }) {
   const { parsed, analysis } = result
   const t = analysis.totals
@@ -14,6 +23,14 @@ export function SqlView({ result, nav }: { result: TraceResult; nav: Nav }) {
   const [sort, setSort] = useState<SortKey>('totalMs')
   const [open, setOpen] = useState<string | null>(null)
   const [table, setTable] = useState<string | null>(null)
+  const [verb, setVerb] = useState<string | null>(null)
+
+  const verbs = useMemo(() => {
+    const m = new Map<string, number>()
+    for (const g of analysis.sqlGroups) m.set(g.verb, (m.get(g.verb) ?? 0) + g.count)
+    const rank = (v: string) => (VERB_ORDER.includes(v) ? VERB_ORDER.indexOf(v) : VERB_ORDER.length)
+    return [...m].sort((a, b) => rank(a[0]) - rank(b[0]) || b[1] - a[1])
+  }, [analysis.sqlGroups])
 
   const tables = useMemo(() => {
     const m = new Map<string, { name: string; count: number; db: number; ms: number }>()
@@ -32,9 +49,9 @@ export function SqlView({ result, nav }: { result: TraceResult; nav: Nav }) {
   const groups = useMemo(() => {
     const q = query.trim().toUpperCase()
     return analysis.sqlGroups
-      .filter((g) => (!q || g.normalized.includes(q)) && (!table || g.tables.includes(table)))
+      .filter((g) => (!q || g.normalized.includes(q)) && (!table || g.tables.includes(table)) && (!verb || g.verb === verb))
       .sort((a, b) => b[sort] - a[sort] || b.count - a.count)
-  }, [analysis.sqlGroups, query, sort, table])
+  }, [analysis.sqlGroups, query, sort, table, verb])
 
   if (t.sql === 0) {
     return (
@@ -89,6 +106,16 @@ export function SqlView({ result, nav }: { result: TraceResult; nav: Nav }) {
             <Search className="pointer-events-none absolute top-2 left-2.5 h-4 w-4 text-slate-400" />
             <input className="input pl-8" placeholder="Sorgu ara…" value={query} onChange={(e) => setQuery(e.target.value)} />
           </div>
+          {verbs.length > 1 &&
+            verbs.map(([v, n]) => (
+              <button
+                key={v}
+                className={`chip py-1 font-mono ${verbCls(v)} ${verb && verb !== v ? 'opacity-40' : ''} ${verb === v ? 'ring-1 ring-current' : ''}`}
+                onClick={() => setVerb(verb === v ? null : v)}
+              >
+                {v} {n}
+              </button>
+            ))}
           {table && (
             <button className="chip bg-brand-100 py-1 font-mono text-brand-700 dark:bg-brand-900/40 dark:text-brand-300" onClick={() => setTable(null)}>
               {table} ✕
@@ -125,11 +152,14 @@ function SqlGroupRow({ g, maxMs, open, toggle, result, nav }: { g: SqlGroup; max
         <div className="min-w-0 flex-1">
           <div className="line-clamp-2 font-mono text-xs break-all text-slate-800 dark:text-slate-200">{g.normalized}</div>
           <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-500">
+            <span className={`chip font-mono ${verbCls(g.verb)}`}>{g.verb}</span>
             <span>
               <b className="text-slate-700 dark:text-slate-300">{g.count}</b> kez
             </span>
             <span>{g.dbHits} db · {g.cacheHits} cache</span>
-            <span>{g.rows.toLocaleString('tr-TR')} satır</span>
+            <span>
+              {g.rows.toLocaleString('tr-TR')} satır{g.verb !== 'SELECT' && ' etkilendi'}
+            </span>
             {g.maxInOneLoop > 1 && <span className="text-amber-600 dark:text-amber-400">tek döngüde {g.maxInOneLoop}×</span>}
             <span className="truncate">{g.locations.length === 1 ? g.locations[0] : `${g.locations.length} farklı yerden`}</span>
           </div>

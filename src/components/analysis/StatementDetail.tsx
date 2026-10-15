@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { ChevronRight, FileText, GitBranch, PanelBottom, PanelRight, X } from 'lucide-react'
 import type { ParsedTrace } from '../../lib/types.ts'
 import type { Nav } from '../../pages/AnalysisPage.tsx'
-import { fmtMs } from '../../lib/analyze.ts'
+import { fmtMs, issueText } from '../../lib/analyze.ts'
 import { editorLine } from '../../lib/locate.ts'
 import { CodeBlock, KindChip, ResizeHandle, formatSql, msClass } from '../ui.tsx'
 
@@ -82,6 +82,9 @@ export function StatementDetail({
   const path: number[] = []
   for (let s = st.scopeId; s > 0; s = parsed.scopes[s].parent) path.unshift(s)
   const loop = st.loopId >= 0 ? parsed.statements[st.loopId] : null
+  const issues = parsed.issues.filter((i) => i.stmtId === st.id)
+  const missing = issues.filter((i) => i.kind === 'missingParam')
+  const errors = issues.filter((i) => i.kind !== 'missingParam')
 
   const header = (
     <div className={`flex shrink-0 items-center gap-2 border-b border-slate-200 dark:border-slate-800 ${embedded ? 'px-3 py-1.5' : 'px-4 py-2'}`}>
@@ -133,6 +136,26 @@ export function StatementDetail({
         <Stat label="Dosya satırı" value={editorLine(parsed, st.fileLine).toLocaleString('tr-TR')} />
       </div>
 
+      {errors.length > 0 && (
+        <div className="space-y-1 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300">
+          {errors.map((i) => (
+            <div key={i.fileLine}>
+              <span className="font-semibold">{i.kind === 'error' ? 'Hata' : 'Uyarı'}:</span> {issueText(i)}
+              {(i.text ? i.details : i.details.slice(0, -1)).map((d, k) => (
+                <div key={k} className="truncate pl-3 font-mono text-[11px] opacity-80" title={d}>
+                  • {d}
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+      {missing.length > 0 && (
+        <div className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-xs text-violet-800 dark:border-violet-900 dark:bg-violet-950/40 dark:text-violet-300">
+          <span className="font-semibold">Eksik parametre:</span> <span className="font-mono">{missing.map((i) => i.text).join(', ')}</span>
+        </div>
+      )}
+
       <Block title="Kod">{st.sql ? formatSql(st.code) : st.code}</Block>
       {st.trail && <Block title="Değerlendirme">{st.trail}</Block>}
 
@@ -142,7 +165,7 @@ export function StatementDetail({
             <span className={`chip ${st.sql.cached ? 'bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300' : 'bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300'}`}>
               {st.sql.cached ? 'Önbellekten' : 'Veritabanı'}
             </span>
-            {st.sql.rows !== undefined && <span className="chip bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">{st.sql.rows} satır döndü</span>}
+            {st.sql.rows !== undefined && <span className="chip bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">{st.sql.rows} satır {st.sql.verb === 'SELECT' ? 'döndü' : 'etkilendi'}</span>}
             {st.sql.tables.map((t) => (
               <span key={t} className="chip bg-slate-100 font-mono text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                 {t}

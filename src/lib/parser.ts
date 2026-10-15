@@ -1,4 +1,4 @@
-import type { CrossRef, MessageInfo, ParsedTrace, Scope, SqlInfo, Statement, StmtKind, TraceMeta } from './types.ts'
+import type { CrossRef, MessageInfo, ParsedTrace, Scope, SqlInfo, Statement, StmtKind, TraceIssue, TraceMeta } from './types.ts'
 
 const CLOSE = '▏' // ▏ scope end marker (▎ opens a scope)
 
@@ -7,11 +7,17 @@ const SCOPE_RE = /^\s*(\S.*?)\s*▎\s*$/
 const FIELD_RE = /^(.+?)\s*:\s*\[(.*)\]\s*$/
 const XREF_RE = /^(\S+)\s*->\s*(\S+?),?\s*\((\w+)\)/
 const SEPARATOR_END_RE = /^-{10,}\s*▏/
-const BLOCK_END_RE = /^(-(TRUE|ELSE) BLOCK ENDED|-?ENDLOOP|-?ENDWHILE|-?ENDFOR|-?ENDSWITCH)/i
+const BLOCK_END_RE = /^(-(TRUE|ELSE) BLOCK ENDED|-?ENDLOOP|-?ENDWHILE|-?ENDFOR|-?ENDSWITCH|-?ENDPARSE)/i
 const DB_RE = /^->\s*DB(\s+CACHE)?\s*\[(.*)\]\s*$/is
+// Printed by the runtime in this exact casing; upper case "NAME:value" lines are column values
+const ISSUE_RE = /^(Errors?|Warnings?)\s*:\s?(.*)$/
+const MISSING_RE = /^(.*?)\s*<=\s*\?\?\?\s*!!Missing Parameter!!/i
+/** "SET command could not find control:X" is printed before the SET statement it belongs to */
+const COMMAND_RE = /^(\w+)\s+command\b/i
 
+// UPDATE / DELETE source may break right after the verb or table name; the rest follows on tab lines
 const SQL_RE =
-  /^(SELECT\b|INSERT\s+INTO\b|UPDATE\s+[\w.]+\s+SET\b|DELETE\s+FROM\b|DELETE\s+\w+\s+WHERE\b|TRUNCATE\b|MERGE\b|EXEC(UTE)?\s+(SQL|PROC|PROCEDURE)?\b|SQLEXEC\b|EXECSQL\b|CALL\s+\w+\s*\()/i
+  /^(SELECT\b|INSERT\s+INTO\b|UPDATE\s+[\w.]+\s+SET\b|UPDATE\s+[\w.]+\s*$|DELETE\s+FROM\b|DELETE\s+\w+\s+WHERE\b|DELETE\s*$|TRUNCATE\b|MERGE\b|EXEC(UTE)?\s+(SQL|PROC|PROCEDURE)?\b|SQLEXEC\b|EXECSQL\b|CALL\s+\w+\s*\()/i
 const TABLE_RE =
   /^(LOCATERECORD|APPEND|CLEARTABLE|MOVE|DELETEROW|INSERTROW|DELETE\s+ROW|SORTTABLE|SORT\s|COPYTABLE|COPY\s|FILTERTABLE|GROUPBY|SUM\s|CREATETABLE|ADDCOLUMN|COLLAPSE|TBLMOVEFIELDS)/i
 
@@ -68,8 +74,18 @@ export function normalizeSql(code: string): string {
     .toUpperCase()
 }
 
+function sqlVerb(sql: string): string {
+  return (sql.trim().match(/^\w+/)?.[0] ?? 'SQL').toUpperCase()
+}
+
+/** Procedure calls and the like may send other text to the database; only clear CRUD mismatches count */
+function sameVerb(a: string, b: string): boolean {
+  const crud = /^(SELECT|INSERT|UPDATE|DELETE)$/
+  return a === b || !crud.test(a) || !crud.test(b)
+}
+
 function sqlInfo(code: string, trail: string): SqlInfo {
-  const verb = (code.trim().match(/^\w+/)?.[0] ?? 'SQL').toUpperCase()
+  const verb = sqlVerb(code)
   const tables = new Set<string>()
   // INTO of a SELECT names the in-memory TROIA table, not a database table
   const re = verb === 'SELECT' ? /\b(?:FROM|JOIN)\s+([A-Z_][\w.]*)/gi : /\b(?:FROM|JOIN|INTO|UPDATE)\s+([A-Z_][\w.]*)/gi
@@ -153,7 +169,8 @@ function parseHeader(lines: string[], end: number): TraceMeta {
 }
 
 interface Block {
-  type: 'if' | 'loop' | 'switch'
+  /** 'parse' (PARSE ... BEGIN) iterates too, but its statements do not count as running in a loop */
+  type: 'if' | 'loop' | 'switch' | 'parse'
   stmtId: number
 }
 
@@ -189,6 +206,7 @@ export function parseTrace(text: string): ParsedTrace {
 
   const scopes: Scope[] = []
   const statements: Statement[] = []
+  const issues: TraceIssue[] = []
 
   const newScope = (name: string, parent: Scope | null, line: number, implicit: boolean, callerLoop: number): Scope => {
     const { label, owner } = scopeLabel(name)
@@ -223,7 +241,16 @@ export function parseTrace(text: string): ParsedTrace {
   let last: Statement | null = null
   let pendingTrail = ''
   let pendingDb: { sql: string; cached: boolean } | null = null
+  /**
+   * UPDATE / DELETE whose source may still continue on tab lines; its "->DB [...]" follows the statement
+   * (SELECT and INSERT print it before). Ends at the first line that is not SQL source.
+   */
+  let openDml: Statement | null = null
   let implicitCount = 0
+  /** Issue whose " * ..." lines may follow */
+  let bulletsFor: TraceIssue | null = null
+  /** Command errors waiting for the statement they were printed before */
+  let pendingCmd: { issue: TraceIssue; word: string }[] = []
 
   const top = () => stack[stack.length - 1]
 
@@ -268,6 +295,8 @@ export function parseTrace(text: string): ParsedTrace {
     const line = lines[i]
     const fileLine = i + 1
     if (!line.trim()) continue
+    const openIssue: TraceIssue | null = bulletsFor
+    bulletsFor = null
 
     const sm = line.match(STMT_RE)
     if (sm) {
@@ -323,17 +352,28 @@ export function parseTrace(text: string): ParsedTrace {
         top().blocks.push({ type: 'if', stmtId: st.id })
       } else if (kind === 'switch') {
         top().blocks.push({ type: 'switch', stmtId: st.id })
+      } else if (/^PARSE\b.*\bBEGIN$/is.test(code)) {
+        // A BREAK inside skips the "BLOCK ENDED" lines of the IFs around it; ENDPARSE closes them
+        top().blocks.push({ type: 'parse', stmtId: st.id })
       } else if (kind === 'sql') {
         st.sql = sqlInfo(code, trail)
         if (pendingDb) {
-          st.sql.resolved = pendingDb.sql
-          st.sql.cached = pendingDb.cached
+          if (sameVerb(sqlVerb(pendingDb.sql), st.sql.verb)) {
+            st.sql.resolved = pendingDb.sql
+            st.sql.cached = pendingDb.cached
+          }
           pendingDb = null
         }
       }
+      openDml = st.sql && !st.sql.resolved && (st.sql.verb === 'UPDATE' || st.sql.verb === 'DELETE') ? st : null
       statements.push(st)
       scope.kids.push(st.id)
       last = st
+      for (const p of pendingCmd) {
+        const w = code.match(/^\w+/)?.[0]
+        if (w && w.toUpperCase() === p.word) p.issue.stmtId = st.id
+      }
+      pendingCmd = []
       for (let k = 0; k < marks; k++) popScope(fileLine)
       continue
     }
@@ -349,7 +389,13 @@ export function parseTrace(text: string): ParsedTrace {
       const t = line.replace(/▏/g, '').trim()
       const blockEnd = t.match(BLOCK_END_RE)
       if (blockEnd) {
-        const type: Block['type'] = /BLOCK/i.test(blockEnd[1]) ? 'if' : /SWITCH/i.test(blockEnd[1]) ? 'switch' : 'loop'
+        const type: Block['type'] = /BLOCK/i.test(blockEnd[1])
+          ? 'if'
+          : /SWITCH/i.test(blockEnd[1])
+            ? 'switch'
+            : /PARSE/i.test(blockEnd[1])
+              ? 'parse'
+              : 'loop'
         if (debt > 0 && marks > 0) {
           debt--
           marks--
@@ -362,19 +408,71 @@ export function parseTrace(text: string): ParsedTrace {
         continue
       }
       const db = t.match(DB_RE)
+      const dml: Statement | null = openDml
+      openDml = null
       if (db) {
-        pendingDb = { sql: db[2].trim(), cached: !!db[1] }
+        const sql = db[2].trim()
+        if (dml && sameVerb(sqlVerb(sql), dml.sql!.verb)) {
+          dml.sql!.resolved = sql
+          dml.sql!.cached = !!db[1]
+        } else pendingDb = { sql, cached: !!db[1] }
+      } else if (dml && /^(FROM|WHERE|SET|AND|OR)\b|^\(/i.test(t)) {
+        // Source line of the statement: "FROM X", "WHERE ...", "AND ..."
+        dml.code += '\n' + t
+        dml.sql = { ...dml.sql!, ...sqlInfo(dml.code, dml.trail) }
+        openDml = dml
       } else if (/^\+(TRUE|ELSE) BLOCK STARTED|^\+CASE\b|^-END ITERATION/i.test(t)) {
         // structural markers; blocks are tracked from the statements themselves
       } else if (/^\+ACTIVE ROW|^\+START ITERATION/i.test(t)) {
         const loopId = currentLoop()
         const loop = loopId >= 0 ? statements[loopId] : null
         if (loop && loop.iterations !== undefined && loop.scopeId === top().scope.id) loop.iterations++
-      } else if (last) {
-        const rows = last.sql ? t.match(/^\[Number of rows\s*:\s*(\d+)\]/i) : null
-        if (rows) last.sql!.rows = parseInt(rows[1], 10)
-        if (last.details.length < 40) last.details.push(t)
+      } else {
+        let ownLine = true
+        const im = t.match(ISSUE_RE)
+        const mp = im ? null : t.match(MISSING_RE)
+        if (im || mp) {
+          const issue: TraceIssue = {
+            kind: im ? (/^E/.test(im[1]) ? 'error' : 'warning') : 'missingParam',
+            fileLine,
+            lineEnd: fileLine,
+            scopeId: top().scope.id,
+            stmtId: last ? last.id : -1,
+            text: (im ? im[2] : mp![1]).trim(),
+            details: [],
+          }
+          issues.push(issue)
+          if (im) {
+            bulletsFor = issue
+            const cmd = issue.text.match(COMMAND_RE)
+            if (cmd) {
+              pendingCmd.push({ issue, word: cmd[1].toUpperCase() })
+              ownLine = false
+            }
+          }
+        } else if (openIssue && t.startsWith('*')) {
+          const d = t.slice(1).trim()
+          if (d) openIssue.details.push(d)
+          openIssue.lineEnd = fileLine
+          bulletsFor = openIssue
+        }
+        if (last && ownLine) {
+          // SELECT: "[Number of rows : N]"; DELETE: "[AFFECTED ROW COUNT: N]"; UPDATE: "[SYS_AFFECTEDROWCOUNT[N], ..."
+          const rows = last.sql ? t.match(/^\[(?:Number of rows|AFFECTED ROW COUNT)\s*:\s*(\d+)\]|^\[SYS_AFFECTEDROWCOUNT\[(\d+)\]/i) : null
+          if (rows) last.sql!.rows = parseInt(rows[1] ?? rows[2], 10)
+          if (last.details.length < 40) last.details.push(t)
+        }
       }
+      for (let k = 0; k < marks; k++) popScope(fileLine)
+      continue
+    }
+
+    // A message listed under "Errors:" may itself run over several lines
+    if (openIssue && openIssue.details.length) {
+      const marks = countMarks(line)
+      openIssue.details[openIssue.details.length - 1] += '\n' + line.replace(/▏/g, '').trim()
+      openIssue.lineEnd = fileLine
+      bulletsFor = openIssue
       for (let k = 0; k < marks; k++) popScope(fileLine)
       continue
     }
@@ -416,7 +514,7 @@ export function parseTrace(text: string): ParsedTrace {
   if (statements.length === 0) warnings.push('Dosyada trace satırı bulunamadı. Bu bir Troia trace dosyası mı?')
   if (implicitCount > 0) warnings.push(`${implicitCount} scope, başlangıç satırı olmadan bulundu (trace bir çağrının ortasında başlamış olabilir).`)
 
-  return { meta, scopes, statements, lineCount: lines.length, bodyStartLine: bodyStart + 1, crBreaks, warnings }
+  return { meta, scopes, statements, issues, lineCount: lines.length, bodyStartLine: bodyStart + 1, crBreaks, warnings }
 }
 
 /**

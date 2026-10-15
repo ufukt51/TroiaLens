@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Maximize2, Minimize2, X } from 'lucide-react'
-import type { ParsedTrace } from '../../lib/types.ts'
-import type { Cursor, Nav } from '../../pages/AnalysisPage.tsx'
-import { markFor, refAtLine } from '../../lib/locate.ts'
+import type { Mark } from '../../lib/locate.ts'
 import { ResizeHandle, VirtualList } from '../ui.tsx'
 
 const ROW_H = 20
@@ -31,19 +29,33 @@ function saveWidth(w: number | null) {
 }
 
 /**
- * Browser counterpart of the Notepad++ editor: the trace file next to the call tree, with the selected
- * row's method span, its own lines and the method name marked. Clicking a line selects its tree row.
+ * Browser counterpart of the Notepad++ editor: the trace file next to a list (call tree, issues), with the
+ * selected row's method span, its own lines and the method name marked. A new nonce scrolls to the mark.
  * Its left edge drags to resize (double click restores the default width); it can also fill the screen.
  */
-export function SourcePane({ lines, parsed, cursor, nav }: { lines: string[]; parsed: ParsedTrace; cursor: Cursor; nav: Nav }) {
-  const m = useMemo(() => markFor(parsed, cursor.ref), [parsed, cursor.ref])
+export function SourcePane({
+  lines,
+  mark: m,
+  nonce,
+  onClose,
+  onLine,
+  hint,
+}: {
+  lines: string[]
+  mark: Mark
+  nonce: number
+  onClose: () => void
+  /** A file line was clicked */
+  onLine: (line: number) => void
+  hint: string
+}) {
   const [scrollTo, setScrollTo] = useState<{ index: number; nonce: number } | null>(null)
   const [width, setWidth] = useState(savedWidth)
   const [full, setFull] = useState(false)
   const box = useRef<HTMLDivElement>(null)
   const drag = useRef<{ w: number; max: number } | null>(null)
 
-  useEffect(() => setScrollTo({ index: m.line - 1, nonce: cursor.nonce }), [cursor, m.line])
+  useEffect(() => setScrollTo({ index: m.line - 1, nonce }), [nonce, m.line])
 
   // Filling the screen keeps the marked line in view; Esc goes back (before the detail pane would close on it)
   const line = useRef(m.line)
@@ -109,7 +121,7 @@ export function SourcePane({ lines, parsed, cursor, nav }: { lines: string[]; pa
           >
             {full ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
           </button>
-          <button className="btn-ghost p-1.5" onClick={nav.unpick} aria-label="Kapat" title="Kapat">
+          <button className="btn-ghost p-1.5" onClick={onClose} aria-label="Kapat" title="Kapat">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -127,10 +139,7 @@ export function SourcePane({ lines, parsed, cursor, nav }: { lines: string[]; pa
                 className={`flex h-full cursor-pointer items-center font-mono text-xs whitespace-pre ${
                   own ? 'bg-amber-200/70 dark:bg-amber-500/30' : inSpan ? 'bg-amber-50 dark:bg-amber-500/[0.07]' : 'hover:bg-slate-50 dark:hover:bg-slate-900'
                 }`}
-                onClick={() => {
-                  const ref = refAtLine(parsed, n)
-                  if (ref !== null) nav.pick(ref)
-                }}
+                onClick={() => onLine(n)}
               >
                 <span
                   className={`sticky left-0 w-14 shrink-0 border-r-2 bg-slate-50 pr-2 text-right text-[11px] text-slate-400 select-none dark:bg-slate-900 ${
@@ -144,7 +153,7 @@ export function SourcePane({ lines, parsed, cursor, nav }: { lines: string[]; pa
             )
           }}
         />
-        <div className="border-t border-slate-100 px-3 py-1.5 text-[11px] text-slate-500 dark:border-slate-800">Satıra tıklayınca ağaçta seçilir</div>
+        <div className="border-t border-slate-100 px-3 py-1.5 text-[11px] text-slate-500 dark:border-slate-800">{hint}</div>
       </div>
     </div>
   )
