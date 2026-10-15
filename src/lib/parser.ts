@@ -530,39 +530,58 @@ function measureScopes(scopes: Scope[], statements: Statement[]) {
   const scopeTime = (id: number): number => {
     if (incl[id] >= 0) return incl[id]
     const s = scopes[id]
-    const t = measure(s.kids, 0, s.kids.length)
+    const t = measure(s.kids)
     incl[id] = t
     s.totalMs = t
     return t
   }
 
-  const measure = (kids: number[], from: number, to: number): number => {
-    let sum = 0
-    let pre = 0
-    let j = from
-    while (j < to) {
+  /** A block (kids up to `to`) whose time goes to `owner`, the IF/LOOP statement that opened it */
+  interface Frame {
+    to: number
+    sum: number
+    pre: number
+    owner: Statement | null
+    /** Time of the calls printed before the owner */
+    before: number
+  }
+
+  // Blocks nest on an explicit stack: a trace whose "BLOCK ENDED" lines are missing nests every IF in the one before
+  const measure = (kids: number[]): number => {
+    const frames: Frame[] = [{ to: kids.length, sum: 0, pre: 0, owner: null, before: 0 }]
+    let j = 0
+    for (;;) {
+      const f = frames[frames.length - 1]
+      if (j >= f.to) {
+        frames.pop()
+        const t = f.sum + f.pre
+        if (!f.owner) return t
+        const inner = f.before + t
+        f.owner.exclMs = Math.max(0, f.owner.ms - inner)
+        frames[frames.length - 1].sum += Math.max(f.owner.ms, inner)
+        continue
+      }
       const k = kids[j]
       if (k < 0) {
-        pre += scopeTime(~k)
+        f.pre += scopeTime(~k)
         j++
         continue
       }
       const st = statements[k]
-      let inner = pre
-      pre = 0
+      let inner = f.pre
+      f.pre = 0
       j++
       if (st.blockEnd !== undefined && st.blockEnd > j) {
-        const end = Math.min(st.blockEnd, to)
-        inner += measure(kids, j, end)
-        j = end
-      } else if (st.kind === 'call' && j < to && kids[j] < 0) {
+        frames.push({ to: Math.min(st.blockEnd, f.to), sum: 0, pre: 0, owner: st, before: inner })
+        continue
+      }
+      if (st.kind === 'call' && j < f.to && kids[j] < 0) {
         inner += scopeTime(~kids[j])
         j++
       }
       st.exclMs = Math.max(0, st.ms - inner)
-      sum += Math.max(st.ms, inner)
+      f.sum += Math.max(st.ms, inner)
     }
-    return sum + pre
   }
 
   // Deepest scopes first keeps the recursion shallow on very large traces
