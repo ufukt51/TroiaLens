@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode, type UIEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode, type UIEvent } from 'react'
 import { Check, Copy, GripHorizontal, GripVertical } from 'lucide-react'
 import type { Severity, StmtKind } from '../lib/types.ts'
 
@@ -86,7 +86,10 @@ export function formatSql(sql: string): string {
     .trim()
 }
 
-/** Fixed-row-height virtual list for very long trees and files. */
+/**
+ * Virtual list for very long trees and files. Rows are rowHeight tall; with rowsOf an item spans that many rows
+ * (wrapped text), worked out from the list's inner width.
+ */
 export function VirtualList<T>({
   items,
   rowHeight,
@@ -94,6 +97,7 @@ export function VirtualList<T>({
   className = '',
   scrollTo,
   overscan = 12,
+  rowsOf,
 }: {
   items: T[]
   rowHeight: number
@@ -101,42 +105,72 @@ export function VirtualList<T>({
   className?: string
   scrollTo?: { index: number; nonce: number } | null
   overscan?: number
+  /** Rows an item takes at the given inner width (at least 1); keep it stable, a new function re-measures all */
+  rowsOf?: (item: T, width: number) => number
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const [scrollTop, setScrollTop] = useState(0)
   const [height, setHeight] = useState(600)
+  const [width, setWidth] = useState(0)
 
   useEffect(() => {
     const el = ref.current
     if (!el) return
-    const ro = new ResizeObserver(() => setHeight(el.clientHeight))
+    const measure = () => {
+      setHeight(el.clientHeight)
+      setWidth(el.clientWidth)
+    }
+    const ro = new ResizeObserver(measure)
     ro.observe(el)
-    setHeight(el.clientHeight)
+    measure()
     return () => ro.disconnect()
   }, [])
+
+  // Top of each item (and the total at the end); null while every item is one row
+  const tops = useMemo(() => {
+    if (!rowsOf || width <= 0) return null
+    const t = new Float64Array(items.length + 1)
+    for (let i = 0; i < items.length; i++) t[i + 1] = t[i] + Math.max(1, rowsOf(items[i], width)) * rowHeight
+    return t
+  }, [items, rowsOf, width, rowHeight])
+
+  const topOf = (i: number) => (tops ? tops[i] : i * rowHeight)
+  const indexAt = (y: number) => {
+    if (!tops) return Math.floor(y / rowHeight)
+    let lo = 0
+    let hi = items.length
+    while (lo < hi) {
+      const mid = (lo + hi + 1) >> 1
+      if (tops[mid] <= y) lo = mid
+      else hi = mid - 1
+    }
+    return lo
+  }
 
   useEffect(() => {
     const el = ref.current
     if (!el || !scrollTo || scrollTo.index < 0) return
-    const top = scrollTo.index * rowHeight
+    const top = tops ? tops[Math.min(scrollTo.index, items.length)] : scrollTo.index * rowHeight
     if (top < el.scrollTop || top > el.scrollTop + el.clientHeight - rowHeight * 2) {
       el.scrollTop = Math.max(0, top - el.clientHeight / 3)
     }
-  }, [scrollTo, rowHeight])
+    // A new request scrolls, and so does the first measure; later re-measures keep the reader's place
+  }, [scrollTo, rowHeight, tops !== null])
 
-  const start = Math.max(0, Math.floor(scrollTop / rowHeight) - overscan)
-  const end = Math.min(items.length, Math.ceil((scrollTop + height) / rowHeight) + overscan)
+  const start = Math.max(0, indexAt(scrollTop) - overscan)
+  const end = Math.min(items.length, indexAt(scrollTop + height) + 1 + overscan)
   const rows: ReactNode[] = []
   for (let i = start; i < end; i++) {
+    const top = topOf(i)
     rows.push(
-      <div key={i} style={{ position: 'absolute', top: i * rowHeight, height: rowHeight, left: 0, right: 0 }}>
+      <div key={i} style={{ position: 'absolute', top, height: topOf(i + 1) - top, left: 0, right: 0 }}>
         {render(items[i], i)}
       </div>,
     )
   }
   return (
     <div ref={ref} className={`scroll-thin relative overflow-auto ${className}`} onScroll={(e: UIEvent<HTMLDivElement>) => setScrollTop(e.currentTarget.scrollTop)}>
-      <div style={{ height: items.length * rowHeight, position: 'relative', minWidth: '100%' }}>{rows}</div>
+      <div style={{ height: topOf(items.length), position: 'relative', minWidth: '100%' }}>{rows}</div>
     </div>
   )
 }
