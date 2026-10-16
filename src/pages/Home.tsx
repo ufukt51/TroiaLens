@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState, type DragEvent } from 'react'
-import { ArrowRight, ClipboardPaste, Database, FileText, GitBranch, HeartPulse, Loader2, Lock, Repeat, X } from 'lucide-react'
+import { ArrowRight, ClipboardPaste, Database, FileText, GitBranch, Lightbulb, Loader2, Lock, Repeat, X } from 'lucide-react'
 import { readTraceFile } from '../lib/run.ts'
 import { listHistory, loadHistoryText, type HistoryEntry } from '../lib/storage.ts'
 import { Logo } from '../components/Header.tsx'
-import { ScoreDot } from '../components/ui.tsx'
 
 interface Props {
   onLoad: (name: string, text: string, opts?: { remember?: boolean }) => void
@@ -17,7 +16,7 @@ const FEATURES = [
   { icon: GitBranch, title: 'Çağrı ağacı', text: 'Event, metot ve sınıf çağrılarını iç içe görün; her düğümün süresini ve SQL sayısını izleyin.' },
   { icon: Database, title: 'SQL analizi', text: 'Sorguları gruplayın, veritabanı ve önbellek isabetlerini ayırın, en pahalı tabloları bulun.' },
   { icon: Repeat, title: 'N+1 tespiti', text: 'Döngü içinde tekrar tekrar çalışan sorgu ve metot çağrılarını otomatik yakalayın.' },
-  { icon: HeartPulse, title: 'Sağlık skoru', text: 'Yavaş satırlar, hata mesajları ve tekrarlardan 0–100 arası bir skor ve öneri listesi.' },
+  { icon: Lightbulb, title: 'Bulgular ve öneriler', text: 'Yavaş satırları, hata mesajlarını ve tekrarları bulun; her sorun için bir öneri alın.' },
 ]
 
 export function Home({ onLoad, busy, error, onDismissError, navigate }: Props) {
@@ -145,7 +144,6 @@ export function Home({ onLoad, busy, error, onDismissError, navigate }: Props) {
           <div className="grid gap-2 sm:grid-cols-2">
             {recent.map((h) => (
               <button key={h.id} className="card flex items-center gap-3 p-3 text-left hover:border-brand-400" onClick={() => void openRecent(h)}>
-                <ScoreDot score={h.score} />
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm font-medium text-slate-900 dark:text-white">{h.transaction ?? h.name}</div>
                   <div className="truncate text-xs text-slate-500">

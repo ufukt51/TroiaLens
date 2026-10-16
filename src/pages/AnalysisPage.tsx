@@ -14,7 +14,6 @@ import { IssuesView } from '../components/analysis/IssuesView.tsx'
 import { RawView } from '../components/analysis/RawView.tsx'
 import { StatementDetail } from '../components/analysis/StatementDetail.tsx'
 import { SourcePane } from '../components/analysis/SourcePane.tsx'
-import { ScoreDot } from '../components/ui.tsx'
 
 const SLIDE_OVER_KEY = 'troialens.detailSlideOver'
 
@@ -195,7 +194,6 @@ export function AnalysisPage({
   return (
     <div className={`flex h-full flex-col ${embedded ? '' : 'mx-auto w-full max-w-[1600px]'}`}>
       <div className={`flex items-center ${embedded ? 'gap-3 px-3 pt-3 pb-2' : 'flex-wrap gap-4 p-4'}`}>
-        <ScoreDot score={analysis.score} size={embedded ? 'sm' : 'lg'} />
         <div className="min-w-0 flex-1">
           <div className={`flex items-baseline ${embedded ? 'gap-x-2' : 'flex-wrap gap-x-3'}`}>
             <h1 className={`shrink-0 font-semibold text-slate-900 dark:text-white ${embedded ? '' : 'text-lg'}`}>{transaction ?? 'Trace'}</h1>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { History as HistoryIcon, Loader2, Trash2 } from 'lucide-react'
 import { deleteHistory, listHistory, loadHistoryText, type HistoryEntry } from '../lib/storage.ts'
-import { Empty, ScoreDot } from '../components/ui.tsx'
+import { Empty } from '../components/ui.tsx'
 
 function fmtSize(b: number) {
   if (b >= 1024 * 1024) return `${(b / 1024 / 1024).toFixed(1)} MB`
@@ -56,7 +56,6 @@ export function History({ onLoad, busy }: { onLoad: (name: string, text: string,
         <div className="card divide-y divide-slate-100 dark:divide-slate-800">
           {items.map((h) => (
             <div key={h.id} className="flex items-center gap-4 px-4 py-3">
-              <ScoreDot score={h.score} />
               <button className="min-w-0 flex-1 text-left" disabled={!!busy} onClick={() => void open(h)}>
                 <div className="truncate font-medium text-slate-900 hover:text-brand-600 dark:text-white dark:hover:text-brand-400">
                   {h.transaction ? `${h.transaction} · ` : ''}

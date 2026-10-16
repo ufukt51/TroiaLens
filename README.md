@@ -21,7 +21,7 @@ Trace dosyasını (`.trace`, `.txt` veya `.log`) ana sayfaya sürükleyin ya da 
 
 ## Neler yapabilirsiniz?
 
-- **Özet:** Toplam süre, sorgu sayısı ve 0 ile 100 arasında bir sağlık puanı. Puanı düşüren sorunlar önerilerle birlikte listelenir.
+- **Özet:** Toplam süre, sorgu sayısı ve en uzun çağrı derinliği gibi temel göstergeler. Bulunan sorunlar önerilerle birlikte listelenir.
 - **Çağrı ağacı:** Event, metot ve sınıf çağrılarını iç içe görürsünüz. Her satırda süre ve sorgu sayısı görünür.
   Ağacın kaç seviye açılacağını ↑ ve ↓ düğmeleriyle seçebilirsiniz. Ağaçta arama yapabilir, yalnızca SQL satırlarını
   ya da belirli bir süreyi aşan satırları gösterebilirsiniz.
