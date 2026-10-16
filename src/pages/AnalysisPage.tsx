@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, CircleAlert, Database, FileText, GitBranch, LayoutDashboard, MessageSquare, Repeat } from 'lucide-react'
+import { CircleAlert, Database, FileText, GitBranch, LayoutDashboard, MessageSquare, Repeat } from 'lucide-react'
 import type { LoadedTrace } from '../lib/types.ts'
 import { parseFileName } from '../lib/run.ts'
 import { fmtMs } from '../lib/analyze.ts'
@@ -211,12 +211,6 @@ export function AnalysisPage({
             <span title="Analiz süresi">{embedded ? '' : 'Analiz: '}{Math.round(trace.result.parseMs)} ms</span>
           </div>
         </div>
-        {parsed.warnings.length > 0 && (
-          <div className="flex shrink-0 items-center gap-1 text-xs text-amber-600 dark:text-amber-400" title={parsed.warnings.join('\n')}>
-            <AlertTriangle className="h-4 w-4" /> {parsed.warnings.length}
-            {!embedded && ' ayrıştırma notu'}
-          </div>
-        )}
       </div>
 
       <div

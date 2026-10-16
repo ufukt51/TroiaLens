@@ -363,7 +363,6 @@ export function analyze(p: ParsedTrace): Analysis {
       { used: 0, max: 3 },
     )
   }
-  for (const w of p.warnings) findings.push({ id: `w-${w}`, severity: 'info', title: 'Ayrıştırma notu', detail: w, penalty: 0 })
 
   const order = { critical: 0, warning: 1, info: 2 }
   findings.sort((a, b) => order[a.severity] - order[b.severity] || b.penalty - a.penalty)

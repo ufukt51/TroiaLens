@@ -5,32 +5,12 @@ import type { Nav, Tab } from '../../pages/AnalysisPage.tsx'
 import { fmtMs } from '../../lib/analyze.ts'
 import { Bar, KindChip, Kpi, SEVERITY_META, SectionTitle, msClass } from '../ui.tsx'
 
-function HealthRing({ score, grade }: { score: number; grade: string }) {
-  const r = 52
-  const c = 2 * Math.PI * r
-  const color = score >= 90 ? '#10b981' : score >= 75 ? '#0f9e8f' : score >= 50 ? '#f59e0b' : '#f43f5e'
-  return (
-    <div className="relative h-36 w-36 shrink-0">
-      <svg viewBox="0 0 120 120" className="h-full w-full -rotate-90">
-        <circle cx="60" cy="60" r={r} fill="none" strokeWidth="10" className="stroke-slate-100 dark:stroke-slate-800" />
-        <circle cx="60" cy="60" r={r} fill="none" strokeWidth="10" stroke={color} strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - score / 100)} />
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <div className="text-3xl font-bold tabular-nums text-slate-900 dark:text-white">{score}</div>
-        <div className="text-xs font-medium text-slate-500">{grade}</div>
-      </div>
-    </div>
-  )
-}
-
 export function Overview({ result, nav, goTab }: { result: TraceResult; nav: Nav; goTab: (t: Tab) => void }) {
   const { parsed, analysis } = result
   const t = analysis.totals
   const [showAllFindings, setShowAllFindings] = useState(false)
   const findings = showAllFindings ? analysis.findings : analysis.findings.slice(0, 8)
   const maxMethod = analysis.methods[0]?.totalMs ?? 0
-  const counts = { critical: 0, warning: 0, info: 0 }
-  for (const f of analysis.findings) counts[f.severity]++
 
   const jump = (fileLine?: number) => {
     if (!fileLine) return
@@ -41,25 +21,7 @@ export function Overview({ result, nav, goTab }: { result: TraceResult; nav: Nav
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-      <div className="card flex flex-col gap-5 p-5 lg:col-span-1">
-        <div className="flex items-center gap-5">
-          <HealthRing score={analysis.score} grade={analysis.grade} />
-          <div className="space-y-2 text-sm">
-            <div className="font-semibold text-slate-900 dark:text-white">Sağlık skoru</div>
-            {(['critical', 'warning', 'info'] as const).map((s) => (
-              <div key={s} className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
-                <span className={`h-2 w-2 rounded-full ${SEVERITY_META[s].dot}`} />
-                {counts[s]} {SEVERITY_META[s].label.toLowerCase()}
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="text-xs text-slate-500">
-          Skor 100'den başlar; N+1 sorgular, yavaş satırlar, hata mesajları ve sık tekrarlanan işlemler puan düşürür.
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:col-span-2">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:col-span-3 lg:grid-cols-6">
         <Kpi icon={<Clock className="h-3.5 w-3.5" />} label="Toplam süre" value={fmtMs(t.totalMs)} sub="iç içe süreler tekilleştirildi" />
         <Kpi icon={<Activity className="h-3.5 w-3.5" />} label="Çalışan satır" value={t.statements.toLocaleString('tr-TR')} sub={`${t.loops} döngü`} />
         <Kpi icon={<GitBranch className="h-3.5 w-3.5" />} label="Metot / event çağrısı" value={t.scopes.toLocaleString('tr-TR')} sub={`${analysis.methods.length} farklı`} />
@@ -96,7 +58,6 @@ export function Overview({ result, nav, goTab }: { result: TraceResult; nav: Nav
                   <div className="text-sm font-medium text-slate-900 dark:text-white">{f.title}</div>
                   <div className="mt-0.5 text-xs break-words text-slate-500 dark:text-slate-400">{f.detail}</div>
                 </button>
-                {f.penalty > 0 && <span className="shrink-0 text-xs tabular-nums text-slate-400">−{f.penalty}</span>}
               </li>
             ))}
           </ul>
