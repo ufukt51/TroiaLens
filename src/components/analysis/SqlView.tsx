@@ -61,7 +61,8 @@ export function SqlView({ result, nav }: { result: TraceResult; nav: Nav }) {
     )
   }
 
-  const maxMs = Math.max(...analysis.sqlGroups.map((g) => g.totalMs), 1)
+  // reduce, not Math.max(...): spreading tens of thousands of groups overflows the stack in embedded browsers
+  const maxMs = analysis.sqlGroups.reduce((m, g) => Math.max(m, g.totalMs), 1)
   const maxTable = tables[0]?.count ?? 1
 
   return (
