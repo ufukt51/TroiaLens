@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNod
 import { ChevronDown, ChevronRight, ChevronUp, CircleAlert, GitBranch, Search } from 'lucide-react'
 import type { IssueKind, ParsedTrace, TraceResult } from '../../lib/types.ts'
 import type { Nav } from '../../pages/AnalysisPage.tsx'
+import type { LineSource } from '../../lib/source.ts'
 import { issueText } from '../../lib/analyze.ts'
 import { editorLine, markFor, refAtLine, type Mark } from '../../lib/locate.ts'
 import { Empty } from '../ui.tsx'
@@ -83,7 +84,7 @@ function matches(parsed: ParsedTrace, e: Entry, q: string): boolean {
  * Runtime errors and warnings ("Errors:" lines, error / warning MESSAGEs) and missing parameters, each a
  * link to its line: the editor in Notepad++, a source pane beside the list in the browser.
  */
-export function IssuesView({ result, nav, lines, embedded }: { result: TraceResult; nav: Nav; lines: string[]; embedded: boolean }) {
+export function IssuesView({ result, nav, source, embedded }: { result: TraceResult; nav: Nav; source: LineSource | null; embedded: boolean }) {
   const { parsed, analysis } = result
   const all = useMemo(() => collect(parsed, analysis.messages), [parsed, analysis.messages])
   const [filter, setFilter] = useState<Filter>('all')
@@ -346,9 +347,9 @@ export function IssuesView({ result, nav, lines, embedded }: { result: TraceResu
   return (
     <div className="flex min-h-0 flex-1 gap-4">
       {list}
-      {!embedded && pane && (
+      {source && pane && (
         <SourcePane
-          lines={lines}
+          source={source}
           mark={pane.mark}
           nonce={pane.nonce}
           onClose={() => setPane(null)}

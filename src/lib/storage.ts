@@ -48,13 +48,18 @@ export async function listHistory(): Promise<HistoryEntry[]> {
   }
 }
 
-export async function saveHistory(entry: Omit<HistoryEntry, 'id' | 'hasText'>, text: string): Promise<string | null> {
+/** Larger files are not remembered at all */
+export const MAX_HISTORY_FILE = 400 * 1024 * 1024
+
+/** Remembers an analysed file; its content too when it is small enough */
+export async function saveHistory(entry: Omit<HistoryEntry, 'id' | 'hasText'>, file: Blob): Promise<string | null> {
+  if (file.size > MAX_HISTORY_FILE) return null
   try {
-    const id = `${entry.name}|${entry.size}|${hash(text)}`
-    const hasText = text.length <= MAX_TEXT
+    const id = `${entry.name}|${entry.size}|${await hash(file)}`
+    const hasText = file.size <= MAX_TEXT
     await tx(['entries', 'texts'], 'readwrite', (t) => {
       t.objectStore('entries').put({ ...entry, id, hasText })
-      if (hasText) t.objectStore('texts').put(text, id)
+      if (hasText) t.objectStore('texts').put(file, id)
     })
     return id
   } catch {
@@ -62,9 +67,11 @@ export async function saveHistory(entry: Omit<HistoryEntry, 'id' | 'hasText'>, t
   }
 }
 
-export async function loadHistoryText(id: string): Promise<string | undefined> {
+/** Content of a remembered file (older entries kept it as a string) */
+export async function loadHistoryText(id: string): Promise<Blob | undefined> {
   try {
-    return await tx<string>(['texts'], 'readonly', (t) => t.objectStore('texts').get(id))
+    const v = await tx<Blob | string>(['texts'], 'readonly', (t) => t.objectStore('texts').get(id))
+    return typeof v === 'string' ? new Blob([v], { type: 'text/plain' }) : v
   } catch {
     return undefined
   }
@@ -86,12 +93,16 @@ export async function deleteHistory(id?: string): Promise<void> {
   }
 }
 
-function hash(s: string): string {
+/** Of the file's first and last 64 KB: enough to tell traces of the same name and size apart */
+async function hash(file: Blob): Promise<string> {
+  const part = 1 << 16
+  const head = new Uint8Array(await file.slice(0, part).arrayBuffer())
+  const tail = file.size > part ? new Uint8Array(await file.slice(Math.max(part, file.size - part)).arrayBuffer()) : new Uint8Array(0)
   let h = 2166136261
-  const step = Math.max(1, Math.floor(s.length / 200000))
-  for (let i = 0; i < s.length; i += step) {
-    h ^= s.charCodeAt(i)
-    h = Math.imul(h, 16777619)
-  }
+  for (const b of [head, tail])
+    for (let i = 0; i < b.length; i++) {
+      h ^= b[i]
+      h = Math.imul(h, 16777619)
+    }
   return (h >>> 0).toString(36)
 }

@@ -77,9 +77,8 @@ export function markFor(parsed: ParsedTrace, ref: number): Mark {
   let lineEnd = line
   if (ref >= 0) {
     const st = statements[ref]
-    const newlines = (t: string) => t.split('\n').length - 1
     line = st.fileLine
-    lineEnd = line + newlines(st.code) + newlines(st.trail) + st.details.length
+    lineEnd = line + st.span
     const next = statements[ref + 1]
     if (next) lineEnd = Math.max(line, Math.min(lineEnd, next.fileLine - 1))
   }

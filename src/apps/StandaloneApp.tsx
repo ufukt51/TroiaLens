@@ -3,7 +3,7 @@ import { Header } from '../components/Header.tsx'
 import { Home } from '../pages/Home.tsx'
 import { History } from '../pages/History.tsx'
 import { AnalysisPage } from '../pages/AnalysisPage.tsx'
-import { analyzeInWorker, parseFileName } from '../lib/run.ts'
+import { analyzeBlob, parseFileName } from '../lib/run.ts'
 import { saveHistory } from '../lib/storage.ts'
 import type { LoadedTrace } from '../lib/types.ts'
 
@@ -35,16 +35,15 @@ export function StandaloneApp() {
   }, [])
 
   const load = useCallback(
-    async (name: string, text: string, opts: { remember?: boolean } = {}) => {
+    async (name: string, file: Blob, opts: { remember?: boolean } = {}) => {
       setError(null)
       setBusy(name)
       try {
-        const result = await analyzeInWorker(text)
+        const { result, source, size } = await analyzeBlob(file)
         if (result.parsed.statements.length === 0) {
           throw new Error('Dosyada Troia trace satırı bulunamadı. Canias\'ta "TROIA CODE EXECUTION TRACE" olarak alınmış bir .txt dosyası seçin.')
         }
-        const size = new Blob([text]).size
-        setTrace({ id: ++loads.current, name, size, text, result })
+        setTrace({ id: ++loads.current, name, size, source, result })
         if (opts.remember !== false) {
           const fromName = parseFileName(name)
           const info = result.analysis.info
@@ -59,7 +58,7 @@ export function StandaloneApp() {
               statements: result.analysis.totals.statements,
               sql: result.analysis.totals.sql,
             },
-            text,
+            file,
           )
         }
         navigate('analysis')

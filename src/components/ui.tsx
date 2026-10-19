@@ -86,9 +86,13 @@ export function formatSql(sql: string): string {
     .trim()
 }
 
+/** Browsers stop growing a box at some 17 (Firefox) to 33 (Chrome) million pixels; taller lists scroll scaled */
+const MAX_SCROLL_PX = 10_000_000
+
 /**
  * Virtual list for very long trees and files. Rows are rowHeight tall; with rowsOf an item spans that many rows
- * (wrapped text), worked out from the list's inner width.
+ * (wrapped text), worked out from the list's inner width. A list taller than browsers can lay out scrolls
+ * proportionally: the scroll bar covers it all, one pixel of it moves the content a little more.
  */
 export function VirtualList<T>({
   items,
@@ -98,8 +102,9 @@ export function VirtualList<T>({
   scrollTo,
   overscan = 12,
   rowsOf,
+  onRange,
 }: {
-  items: T[]
+  items: ArrayLike<T>
   rowHeight: number
   render: (item: T, index: number) => ReactNode
   className?: string
@@ -107,6 +112,8 @@ export function VirtualList<T>({
   overscan?: number
   /** Rows an item takes at the given inner width (at least 1); keep it stable, a new function re-measures all */
   rowsOf?: (item: T, width: number) => number
+  /** Items about to be drawn, from..to (exclusive) */
+  onRange?: (from: number, to: number) => void
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const [scrollTop, setScrollTop] = useState(0)
@@ -147,30 +154,38 @@ export function VirtualList<T>({
     return lo
   }
 
+  // Content pixels per scrolled pixel: 1 unless the list is taller than a box can be
+  const total = topOf(items.length)
+  const box = Math.min(total, MAX_SCROLL_PX)
+  const scale = total > box ? (total - height) / Math.max(1, box - height) : 1
+  const view = scrollTop * scale
+
   useEffect(() => {
     const el = ref.current
     if (!el || !scrollTo || scrollTo.index < 0) return
     const top = tops ? tops[Math.min(scrollTo.index, items.length)] : scrollTo.index * rowHeight
-    if (top < el.scrollTop || top > el.scrollTop + el.clientHeight - rowHeight * 2) {
-      el.scrollTop = Math.max(0, top - el.clientHeight / 3)
+    const shown = el.scrollTop * scale
+    if (top < shown || top > shown + el.clientHeight - rowHeight * 2) {
+      el.scrollTop = Math.max(0, top - el.clientHeight / 3) / scale
     }
     // A new request scrolls, and so does the first measure; later re-measures keep the reader's place
   }, [scrollTo, rowHeight, tops !== null])
 
-  const start = Math.max(0, indexAt(scrollTop) - overscan)
-  const end = Math.min(items.length, indexAt(scrollTop + height) + 1 + overscan)
+  const start = Math.max(0, indexAt(view) - overscan)
+  const end = Math.min(items.length, indexAt(view + height) + 1 + overscan)
+  useEffect(() => onRange?.(start, end), [onRange, start, end])
   const rows: ReactNode[] = []
   for (let i = start; i < end; i++) {
     const top = topOf(i)
     rows.push(
-      <div key={i} style={{ position: 'absolute', top, height: topOf(i + 1) - top, left: 0, right: 0 }}>
+      <div key={i} style={{ position: 'absolute', top: top - view + scrollTop, height: topOf(i + 1) - top, left: 0, right: 0 }}>
         {render(items[i], i)}
       </div>,
     )
   }
   return (
     <div ref={ref} className={`scroll-thin relative overflow-auto ${className}`} onScroll={(e: UIEvent<HTMLDivElement>) => setScrollTop(e.currentTarget.scrollTop)}>
-      <div style={{ height: topOf(items.length), position: 'relative', minWidth: '100%' }}>{rows}</div>
+      <div style={{ height: box, position: 'relative', minWidth: '100%' }}>{rows}</div>
     </div>
   )
 }

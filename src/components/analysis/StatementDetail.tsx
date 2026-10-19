@@ -158,6 +158,14 @@ export function StatementDetail({
 
       <Block title="Kod">{st.sql ? formatSql(st.code) : st.code}</Block>
       {st.trail && <Block title="Değerlendirme">{st.trail}</Block>}
+      {st.cut && (
+        <div className="text-xs text-slate-500">
+          Metin uzun olduğu için kısaltıldı.{' '}
+          <button className="underline hover:text-slate-700 dark:hover:text-slate-300" onClick={() => nav.openRaw(st.fileLine)}>
+            Tamamı {embedded ? 'editörde' : 'ham dosyada'}, {editorLine(parsed, st.fileLine).toLocaleString('tr-TR')}. satırda
+          </button>
+        </div>
+      )}
 
       {st.sql && (
         <div className="space-y-3">

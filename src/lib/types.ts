@@ -1,3 +1,5 @@
+import type { LineSource } from './source.ts'
+
 export type StmtKind =
   | 'if'
   | 'loop'
@@ -46,6 +48,10 @@ export interface Statement {
   trail: string
   kind: StmtKind
   details: string[]
+  /** File lines the statement's text and details take after its own line */
+  span: number
+  /** Its text was cut to size; the trace file has all of it */
+  cut?: boolean
   /** Statement id of the innermost enclosing LOOP/WHILE (inherited through calls), -1 if none */
   loopId: number
   loopRows?: number
@@ -236,6 +242,7 @@ export interface LoadedTrace {
   id: number
   name: string
   size: number
-  text: string
+  /** Lines for the raw and source views; null in Notepad++, where the editor shows them */
+  source: LineSource | null
   result: TraceResult
 }

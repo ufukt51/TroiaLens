@@ -1,6 +1,7 @@
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { createReadStream, existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { parseTrace } from '../src/lib/parser.ts'
+import { TraceParser } from '../src/lib/parser.ts'
+import { eachLine, NotUtf8, type TraceEncoding } from '../src/lib/lines.ts'
 import { analyze } from '../src/lib/analyze.ts'
 import { refAtLine } from '../src/lib/locate.ts'
 
@@ -21,11 +22,25 @@ const targets = files.length ? files : [
   join('public', 'sample-trace.txt'),
 ]
 
+/** Read as the browser does: line by line, so files larger than a string can be are tested too */
+async function parseFile(file: string) {
+  let encoding: TraceEncoding = 'utf-8'
+  for (;;) {
+    const parser = new TraceParser()
+    try {
+      await eachLine(createReadStream(file, { highWaterMark: 1 << 22 }), encoding, (text, _start, hiddenCr) => parser.push(text, hiddenCr))
+      return parser.finish()
+    } catch (e) {
+      if (!(e instanceof NotUtf8) || encoding !== 'utf-8') throw e
+      encoding = 'windows-1254'
+    }
+  }
+}
+
 for (const file of targets) {
-  let text: string
-  try { text = readFileSync(file, 'utf8') } catch { continue }
+  if (!existsSync(file)) continue
   const t0 = performance.now()
-  const p = parseTrace(text)
+  const p = await parseFile(file)
   const a = analyze(p)
   console.log(`\n=== ${file} (${(performance.now() - t0).toFixed(1)} ms)`)
   console.log('meta:', p.meta.title, '| sections:', p.meta.sections.map((s) => s.name).join(', '), '| refs:', p.meta.dialogRefs.length, p.meta.classRefs.length)
@@ -52,8 +67,9 @@ for (const file of targets) {
     const ref = refAtLine(p, st.fileLine)
     if (ref !== st.id) { failures.push(`${file}: satır ${st.fileLine} ifade ${st.id} yerine ${ref} buldu`); break }
   }
+  const stmtLines = new Set(p.statements.map((st) => st.fileLine))
   for (const s of p.scopes) {
-    if (s.id === 0 || s.implicit || p.statements.some((st) => st.fileLine === s.startLine)) continue
+    if (s.id === 0 || s.implicit || stmtLines.has(s.startLine)) continue
     const ref = refAtLine(p, s.startLine)
     if (ref !== ~s.id) { failures.push(`${file}: satır ${s.startLine} kapsam ${s.id} yerine ${ref} buldu`); break }
   }

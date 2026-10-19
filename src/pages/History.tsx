@@ -8,7 +8,7 @@ function fmtSize(b: number) {
   return `${Math.max(1, Math.round(b / 1024))} KB`
 }
 
-export function History({ onLoad, busy }: { onLoad: (name: string, text: string, opts?: { remember?: boolean }) => void; busy: string | null }) {
+export function History({ onLoad, busy }: { onLoad: (name: string, file: Blob, opts?: { remember?: boolean }) => void; busy: string | null }) {
   const [items, setItems] = useState<HistoryEntry[] | null>(null)
   const [missing, setMissing] = useState<string | null>(null)
 
@@ -17,8 +17,8 @@ export function History({ onLoad, busy }: { onLoad: (name: string, text: string,
 
   const open = async (h: HistoryEntry) => {
     setMissing(null)
-    const text = h.hasText ? await loadHistoryText(h.id) : undefined
-    if (text) onLoad(h.name, text)
+    const file = h.hasText ? await loadHistoryText(h.id) : undefined
+    if (file) onLoad(h.name, file)
     else setMissing(h.id)
   }
 

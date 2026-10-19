@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState, type DragEvent } from 'react'
 import { ArrowRight, ClipboardPaste, Database, FileText, GitBranch, Lightbulb, Loader2, Lock, Repeat, X } from 'lucide-react'
-import { readTraceFile } from '../lib/run.ts'
 import { listHistory, loadHistoryText, type HistoryEntry } from '../lib/storage.ts'
 import { Logo } from '../components/Header.tsx'
 
 interface Props {
-  onLoad: (name: string, text: string, opts?: { remember?: boolean }) => void
+  onLoad: (name: string, file: Blob, opts?: { remember?: boolean }) => void
   busy: string | null
   error: string | null
   onDismissError: () => void
@@ -31,8 +30,7 @@ export function Home({ onLoad, busy, error, onDismissError, navigate }: Props) {
   }, [])
 
   const openFile = async (file: File | undefined) => {
-    if (!file) return
-    onLoad(file.name, await readTraceFile(file))
+    if (file) onLoad(file.name, file)
   }
 
   const onDrop = (e: DragEvent) => {
@@ -43,12 +41,12 @@ export function Home({ onLoad, busy, error, onDismissError, navigate }: Props) {
 
   const loadSample = async () => {
     const res = await fetch('./sample-trace.txt')
-    onLoad('ornek_SALT01_100_2026_10_012_10_30_00_0001.txt', await res.text(), { remember: false })
+    onLoad('ornek_SALT01_100_2026_10_012_10_30_00_0001.txt', await res.blob(), { remember: false })
   }
 
   const openRecent = async (h: HistoryEntry) => {
-    const text = h.hasText ? await loadHistoryText(h.id) : undefined
-    if (text) onLoad(h.name, text, { remember: true })
+    const file = h.hasText ? await loadHistoryText(h.id) : undefined
+    if (file) onLoad(h.name, file, { remember: true })
     else navigate('history')
   }
 
@@ -126,7 +124,7 @@ export function Home({ onLoad, busy, error, onDismissError, navigate }: Props) {
             onChange={(e) => setPasted(e.target.value)}
           />
           <div className="mt-3 flex justify-end">
-            <button className="btn-primary" disabled={!pasted.trim()} onClick={() => onLoad(`yapistirilan_${new Date().toISOString().slice(0, 19)}.txt`, pasted)}>
+            <button className="btn-primary" disabled={!pasted.trim()} onClick={() => onLoad(`yapistirilan_${new Date().toISOString().slice(0, 19)}.txt`, new Blob([pasted], { type: 'text/plain' }))}>
               Analiz et <ArrowRight className="h-4 w-4" />
             </button>
           </div>

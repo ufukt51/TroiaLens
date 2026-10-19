@@ -1,27 +1,42 @@
-import { useEffect, useMemo, useState } from 'react'
-import { ChevronDown, ChevronUp, Search } from 'lucide-react'
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
+import { ChevronDown, ChevronUp, Loader2, Search } from 'lucide-react'
 import type { ParsedTrace } from '../../lib/types.ts'
 import type { Nav } from '../../pages/AnalysisPage.tsx'
+import type { LineSource } from '../../lib/source.ts'
+import { searchLines } from '../../lib/run.ts'
 import { editorLine, traceLine } from '../../lib/locate.ts'
 import { VirtualList } from '../ui.tsx'
 
 const ROW_H = 20
+const MAX_MATCHES = 50000
 
 /** Lines are trace lines; the gutter numbers them like an editor does (bare CRs break lines there) */
-export function RawView({ lines, parsed, nav, target }: { lines: string[]; parsed: ParsedTrace; nav: Nav; target: { line: number; nonce: number } | null }) {
+export function RawView({ source, parsed, nav, target }: { source: LineSource; parsed: ParsedTrace; nav: Nav; target: { line: number; nonce: number } | null }) {
+  useSyncExternalStore(source.subscribe, source.getVersion)
   const [query, setQuery] = useState('')
   const [hit, setHit] = useState(0)
   const [active, setActive] = useState<number | null>(null)
   const [scrollTo, setScrollTo] = useState<{ index: number; nonce: number } | null>(null)
   const [goto, setGoto] = useState('')
+  const [matches, setMatches] = useState<Uint32Array>(() => new Uint32Array(0))
+  const [searching, setSearching] = useState(false)
 
-  const matches = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    if (q.length < 2) return []
-    const out: number[] = []
-    for (let i = 0; i < lines.length && out.length < 50000; i++) if (lines[i].toLowerCase().includes(q)) out.push(i)
-    return out
-  }, [lines, query])
+  // The file is searched in a worker, a moment after typing stops
+  useEffect(() => {
+    const q = query.trim()
+    setMatches(new Uint32Array(0))
+    if (q.length < 2) return
+    let job: ReturnType<typeof searchLines> | null = null
+    const timer = setTimeout(() => {
+      setSearching(true)
+      job = searchLines(source, q, MAX_MATCHES)
+      job.promise.then(setMatches, () => {}).finally(() => setSearching(false))
+    }, 250)
+    return () => {
+      clearTimeout(timer)
+      job?.cancel()
+    }
+  }, [source, query])
 
   const jump = (index: number) => {
     setActive(index)
@@ -44,6 +59,7 @@ export function RawView({ lines, parsed, nav, target }: { lines: string[]; parse
     jump(matches[n])
   }
 
+  const onRange = useCallback((from: number, to: number) => source.load(from, to), [source])
   const q = query.trim()
 
   return (
@@ -59,7 +75,17 @@ export function RawView({ lines, parsed, nav, target }: { lines: string[]; parse
             onKeyDown={(e) => e.key === 'Enter' && step(e.shiftKey ? -1 : 1)}
           />
         </div>
-        <span className="text-xs tabular-nums text-slate-500">{q.length >= 2 ? (matches.length ? `${hit + 1} / ${matches.length.toLocaleString('tr-TR')}` : 'Sonuç yok') : ''}</span>
+        <span className="flex items-center gap-1 text-xs tabular-nums text-slate-500">
+          {searching ? (
+            <>
+              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Aranıyor…
+            </>
+          ) : q.length >= 2 ? (
+            matches.length ? `${hit + 1} / ${matches.length.toLocaleString('tr-TR')}${matches.length >= MAX_MATCHES ? '+' : ''}` : 'Sonuç yok'
+          ) : (
+            ''
+          )}
+        </span>
         <button className="btn-ghost p-1.5" onClick={() => step(-1)} aria-label="Önceki">
           <ChevronUp className="h-4 w-4" />
         </button>
@@ -70,7 +96,7 @@ export function RawView({ lines, parsed, nav, target }: { lines: string[]; parse
           onSubmit={(e) => {
             e.preventDefault()
             const n = parseInt(goto, 10)
-            if (n > 0) jump(Math.min(lines.length, traceLine(parsed, n)) - 1)
+            if (n > 0) jump(Math.min(source.count, traceLine(parsed, n)) - 1)
           }}
         >
           <input className="input w-28 py-1 text-xs" placeholder="Satıra git" value={goto} onChange={(e) => setGoto(e.target.value.replace(/\D/g, ''))} />
@@ -78,10 +104,12 @@ export function RawView({ lines, parsed, nav, target }: { lines: string[]; parse
       </div>
       <VirtualList
         className="flex-1 bg-white dark:bg-slate-950"
-        items={lines}
+        items={source.widths}
         rowHeight={ROW_H}
         scrollTo={scrollTo}
-        render={(line, i) => {
+        onRange={onRange}
+        render={(_, i) => {
+          const line = source.get(i) ?? ''
           const isStmt = nav.stmtAtLine(i + 1) >= 0
           return (
             <div
@@ -98,7 +126,7 @@ export function RawView({ lines, parsed, nav, target }: { lines: string[]; parse
         }}
       />
       <div className="border-t border-slate-100 px-3 py-1.5 text-[11px] text-slate-500 dark:border-slate-800">
-        {lines.length.toLocaleString('tr-TR')} satır · trace satırına tıklayınca ayrıntısı açılır
+        {source.count.toLocaleString('tr-TR')} satır · trace satırına tıklayınca ayrıntısı açılır
       </div>
     </div>
   )

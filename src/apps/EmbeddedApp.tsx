@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { FileQuestion, FileSearch, Loader2, RefreshCw, TriangleAlert } from 'lucide-react'
 import { AnalysisPage } from '../pages/AnalysisPage.tsx'
-import { analyzeInWorker } from '../lib/run.ts'
+import { analyzeBlob, analyzeUrl, type AnalyzedTrace } from '../lib/run.ts'
 import { onHostMessage, postToHost, setTheme } from '../lib/host.ts'
 import type { LoadedTrace } from '../lib/types.ts'
 
@@ -19,18 +19,18 @@ export function EmbeddedApp() {
   // Every load gets a ticket; results of an older load are dropped when the user switches tabs quickly
   const ticket = useRef(0)
 
-  const load = useCallback(async (name: string, getText: () => Promise<string>) => {
+  const load = useCallback(async (name: string, analyzeIt: () => Promise<AnalyzedTrace>) => {
     const my = ++ticket.current
     setView({ kind: 'busy', name })
     try {
-      const text = await getText()
-      const result = await analyzeInWorker(text)
+      const { result, size } = await analyzeIt()
       if (my !== ticket.current) return
       if (result.parsed.statements.length === 0) {
         setView({ kind: 'notTrace', name })
         return
       }
-      setView({ kind: 'ready', trace: { id: my, name, size: new Blob([text]).size, text, result } })
+      // The editor shows the lines; the page keeps only the analysis
+      setView({ kind: 'ready', trace: { id: my, name, size, source: null, result } })
     } catch (e) {
       if (my === ticket.current) setView({ kind: 'error', name, message: e instanceof Error ? e.message : String(e) })
     }
@@ -46,14 +46,10 @@ export function EmbeddedApp() {
           setSlideOver(msg.detailSlideOver)
           break
         case 'load':
-          void load(msg.name, async () => msg.text)
+          void load(msg.name, () => analyzeBlob(new Blob([msg.text], { type: 'text/plain' })))
           break
         case 'loadUrl':
-          void load(msg.name, async () => {
-            const res = await fetch(msg.url)
-            if (!res.ok) throw new Error(`Dosya okunamadı (${res.status})`)
-            return res.text()
-          })
+          void load(msg.name, () => analyzeUrl(msg.url))
           break
         case 'notTrace':
           ticket.current++

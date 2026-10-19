@@ -84,7 +84,8 @@ export function AnalysisPage({
     return m
   }, [parsed])
 
-  const lines = useMemo(() => (embedded ? [] : trace.text.split(/\r?\n/)), [trace.text, embedded])
+  // The browser reads lines from the file as views need them; Notepad++ shows them itself
+  const source = embedded ? null : trace.source
 
   const nav: Nav = useMemo(() => {
     // In Notepad++ the editor is the source view: move its caret to the row and mark the row's method there
@@ -174,7 +175,7 @@ export function AnalysisPage({
     { id: 'messages', label: 'Mesajlar', icon: MessageSquare, count: t.messages },
     { id: 'issues', label: 'Hata/Uyarı', icon: CircleAlert, count: t.traceErrors + t.traceWarnings + t.missingParams + t.errors + t.warnings, alert: t.traceErrors + t.errors > 0 },
   ]
-  if (!embedded) tabs.push({ id: 'raw', label: 'Ham dosya', icon: FileText })
+  if (source) tabs.push({ id: 'raw', label: 'Ham dosya', icon: FileText })
 
   const close = useCallback(() => setDetail(null), [])
   // Notepad++ keeps the choice in its settings (and ticks its menu item); the browser remembers it locally
@@ -254,9 +255,9 @@ export function AnalysisPage({
         {tab === 'tree' && (
           <div className="flex min-h-0 flex-1 gap-4">
             <CallTree parsed={parsed} nav={nav} cursor={cursor} />
-            {!embedded && cursor && (
+            {source && cursor && (
               <SourcePane
-                lines={lines}
+                source={source}
                 mark={markFor(parsed, cursor.ref)}
                 nonce={cursor.nonce}
                 onClose={nav.unpick}
@@ -275,10 +276,10 @@ export function AnalysisPage({
         {/* Stays mounted once opened: narrow browser windows jump to the raw view and come back to the same place */}
         {issuesOpened && (
           <div className={tab === 'issues' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
-            <IssuesView key={trace.id} result={trace.result} nav={nav} lines={lines} embedded={embedded} />
+            <IssuesView key={trace.id} result={trace.result} nav={nav} source={source} embedded={embedded} />
           </div>
         )}
-        {tab === 'raw' && !embedded && <RawView lines={lines} parsed={parsed} nav={nav} target={rawTarget} />}
+        {tab === 'raw' && source && <RawView source={source} parsed={parsed} nav={nav} target={rawTarget} />}
       </div>
 
       {detail !== null && (

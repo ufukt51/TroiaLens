@@ -34,6 +34,9 @@ Trace dosyasını (`.trace`, `.txt` veya `.log`) ana sayfaya sürükleyin ya da 
 - **Mesajlar:** İşlem sırasında verilen hata, uyarı, bilgi ve başarı mesajları.
 - **Hata/Uyarı:** Trace'te geçen hatalar, uyarılar ve eksik parametreler tek bir listede.
 - Ham dosya görünümü, geçmiş (yalnızca bu tarayıcıda saklanır), açık ve koyu tema.
+- **Büyük dosyalar:** Dosya parça parça okunur, tamamı belleğe alınmaz; 1 GB'ı aşan trace'ler de açılır. Ham dosya
+  ve kaynak görünümü satırları ekrana geldikçe dosyadan okur. Çok uzun satır değerleri ayrıntı panelinde kısaltılır;
+  tamamı dosyada durur. 400 MB'tan büyük dosyalar geçmişe kaydedilmez; 60 MB'a kadar olanların içeriği de saklanır.
 
 ## Ekran görüntüleri
 

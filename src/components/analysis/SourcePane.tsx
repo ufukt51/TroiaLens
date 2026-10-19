@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { Maximize2, Minimize2, X } from 'lucide-react'
 import type { Mark } from '../../lib/locate.ts'
+import type { LineSource } from '../../lib/source.ts'
 import { ResizeHandle, VirtualList } from '../ui.tsx'
 
 const ROW_H = 20
@@ -63,14 +64,14 @@ function saveWidth(w: number | null) {
  * Long lines wrap by default (break anywhere, so a line's row count follows from its length).
  */
 export function SourcePane({
-  lines,
+  source,
   mark: m,
   nonce,
   onClose,
   onLine,
   hint,
 }: {
-  lines: string[]
+  source: LineSource
   mark: Mark
   nonce: number
   onClose: () => void
@@ -78,6 +79,8 @@ export function SourcePane({
   onLine: (line: number) => void
   hint: string
 }) {
+  useSyncExternalStore(source.subscribe, source.getVersion)
+  const onRange = useCallback((from: number, to: number) => source.load(from, to), [source])
   const [scrollTo, setScrollTo] = useState<{ index: number; nonce: number } | null>(null)
   const [width, setWidth] = useState(savedWidth)
   const [full, setFull] = useState(false)
@@ -117,10 +120,11 @@ export function SourcePane({
     document.fonts?.ready.then(measure)
   }, [])
 
+  // Items are the lines' widths with tabs expanded, measured when the file was read
   const rowsOf = useCallback(
-    (text: string, width: number) => {
+    (columns: number, width: number) => {
       const cols = Math.max(1, Math.floor((width - GUTTER - 1) / charW))
-      return Math.max(1, Math.ceil(expandTabs(text).length / cols))
+      return Math.max(1, Math.ceil(columns / cols))
     },
     [charW],
   )
@@ -188,11 +192,13 @@ export function SourcePane({
         </div>
         <VirtualList
           className="flex-1 bg-white dark:bg-slate-950"
-          items={lines}
+          items={source.widths}
           rowHeight={ROW_H}
           scrollTo={scrollTo}
           rowsOf={wrap && charW > 0 ? rowsOf : undefined}
-          render={(text, i) => {
+          onRange={onRange}
+          render={(_, i) => {
+            const text = source.get(i) ?? ''
             const n = i + 1
             const inSpan = n >= m.from && n <= m.to
             const own = n >= m.line && n <= m.lineEnd

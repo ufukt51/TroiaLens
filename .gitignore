@@ -14,3 +14,5 @@ graphify-out/
 # --- Claude Code (yerel) ---
 .claude/
 CLAUDE.md
+
+handoff.md
