@@ -88,7 +88,7 @@ export function StandaloneApp() {
       </main>
       {effectiveRoute !== 'analysis' && (
         <footer className="border-t border-slate-200 py-6 text-center text-xs text-slate-500 dark:border-slate-800 dark:text-slate-500">
-          TroiaLens · Trace dosyaları yalnızca tarayıcınızda işlenir, hiçbir sunucuya gönderilmez.
+          TroiaLens v{__APP_VERSION__} · Trace dosyaları yalnızca tarayıcınızda işlenir, hiçbir sunucuya gönderilmez.
         </footer>
       )}
     </div>
