@@ -4,6 +4,7 @@ import type { SqlGroup, TraceResult } from '../../lib/types.ts'
 import type { Nav } from '../../pages/AnalysisPage.tsx'
 import { fmtMs } from '../../lib/analyze.ts'
 import { Bar, CodeBlock, Empty, Kpi, SectionTitle, formatSql, msClass } from '../ui.tsx'
+import { Code, PREVIEW } from '../SyntaxText.tsx'
 
 type SortKey = 'totalMs' | 'count' | 'dbHits' | 'rows'
 
@@ -151,7 +152,9 @@ function SqlGroupRow({ g, maxMs, open, toggle, result, nav }: { g: SqlGroup; max
       <button className="flex w-full items-start gap-3 px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800/40" onClick={toggle}>
         <span className="mt-0.5 text-slate-400">{open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}</span>
         <div className="min-w-0 flex-1">
-          <div className="line-clamp-2 font-mono text-xs break-all text-slate-800 dark:text-slate-200">{g.normalized}</div>
+          <div className="line-clamp-2 font-mono text-xs break-all text-slate-800 dark:text-slate-200">
+            <Code text={g.normalized} sql max={PREVIEW} />
+          </div>
           <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-500">
             <span className={`chip font-mono ${verbCls(g.verb)}`}>{g.verb}</span>
             <span>
@@ -173,7 +176,7 @@ function SqlGroupRow({ g, maxMs, open, toggle, result, nav }: { g: SqlGroup; max
       {open && (
         <div className="space-y-2 bg-slate-50/70 px-4 py-3 dark:bg-slate-950/40">
           <CodeBlock className="scroll-thin overflow-x-auto rounded-md bg-white p-3 font-mono text-[11px] leading-relaxed text-slate-700 dark:bg-slate-900 dark:text-slate-300">
-            {formatSql(g.normalized)}
+            <Code text={formatSql(g.normalized)} sql />
           </CodeBlock>
           <div className="max-h-80 overflow-y-auto">
             <table className="w-full text-xs">
@@ -193,7 +196,7 @@ function SqlGroupRow({ g, maxMs, open, toggle, result, nav }: { g: SqlGroup; max
                       <td className="td max-w-md">
                         <div className="truncate font-mono">
                           {st.sql?.cached && <span className="chip mr-1.5 bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300">cache</span>}
-                          {st.sql?.resolved ?? st.code}
+                          <Code text={st.sql?.resolved ?? st.code} sql />
                         </div>
                       </td>
                       <td className="td max-w-56 truncate font-mono text-slate-500">

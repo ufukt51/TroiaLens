@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { ChevronDown, ChevronUp, Loader2, Search } from 'lucide-react'
 import type { ParsedTrace } from '../../lib/types.ts'
 import type { Nav } from '../../pages/AnalysisPage.tsx'
@@ -6,6 +6,7 @@ import type { LineSource } from '../../lib/source.ts'
 import { searchLines } from '../../lib/run.ts'
 import { editorLine, traceLine } from '../../lib/locate.ts'
 import { VirtualList } from '../ui.tsx'
+import { BAND_CLS, lineTokens, paint, type Range } from '../SyntaxText.tsx'
 
 const ROW_H = 20
 const MAX_MATCHES = 50000
@@ -111,16 +112,17 @@ export function RawView({ source, parsed, nav, target }: { source: LineSource; p
         render={(_, i) => {
           const line = source.get(i) ?? ''
           const isStmt = nav.stmtAtLine(i + 1) >= 0
+          const tok = lineTokens(line)
           return (
             <div
-              className={`flex h-full items-center font-mono text-xs whitespace-pre ${active === i ? 'bg-amber-100 dark:bg-amber-500/20' : ''} ${isStmt ? 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900' : ''}`}
+              className={`flex h-full items-center font-mono text-xs whitespace-pre ${active === i ? 'bg-amber-100 dark:bg-amber-500/20' : tok.band ? BAND_CLS : ''} ${isStmt ? 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900' : ''}`}
               onClick={() => {
                 const id = nav.stmtAtLine(i + 1)
                 if (id >= 0) nav.select(id)
               }}
             >
               <span className="sticky left-0 w-16 shrink-0 bg-slate-50 pr-3 text-right text-[11px] text-slate-400 select-none dark:bg-slate-900">{editorLine(parsed, i + 1)}</span>
-              <span className="pl-3 text-slate-700 dark:text-slate-300">{q.length >= 2 ? <Highlight text={line} q={q} /> : line}</span>
+              <span className="pl-3 text-slate-700 dark:text-slate-300">{paint(line, tok.color, tok.deco, q.length >= 2 ? hits(line, q) : [], hitMark)}</span>
             </div>
           )
         }}
@@ -132,15 +134,17 @@ export function RawView({ source, parsed, nav, target }: { source: LineSource; p
   )
 }
 
-function Highlight({ text, q }: { text: string; q: string }) {
+/** Where the search text occurs in a line, ignoring case */
+function hits(text: string, q: string): Range[] {
   const lower = text.toLowerCase()
   const ql = q.toLowerCase()
-  const parts: React.ReactNode[] = []
-  let i = 0
-  for (let j = lower.indexOf(ql); j !== -1; j = lower.indexOf(ql, i)) {
-    parts.push(text.slice(i, j), <mark key={j} className="rounded-sm bg-yellow-200 text-inherit dark:bg-yellow-500/40">{text.slice(j, j + q.length)}</mark>)
-    i = j + q.length
-  }
-  parts.push(text.slice(i))
-  return <>{parts}</>
+  const out: Range[] = []
+  for (let j = lower.indexOf(ql); j !== -1; j = lower.indexOf(ql, j + q.length)) out.push([j, j + q.length])
+  return out
 }
+
+const hitMark = (key: number, children: ReactNode) => (
+  <mark key={key} className="rounded-sm bg-yellow-200 text-inherit dark:bg-yellow-500/40">
+    {children}
+  </mark>
+)

@@ -76,3 +76,57 @@
 .scroll-thin {
   scrollbar-width: thin;
 }
+
+/* Syntax colouring of trace text (lib/syntax.ts); the Notepad++ plugin uses the same palette */
+:root {
+  --syn-hata: #b91c1c;
+  --syn-sql: #7c3aed;
+  --syn-anahtar: #1d4ed8;
+  --syn-tanim: #be185d;
+  --syn-metod: #795e26;
+  --syn-sinif: #15803d;
+  --syn-param: #b4540a;
+  --syn-deger: #0e7490;
+  --syn-sonuk: #8a94a6;
+  --syn-t200: #d97706;
+  --syn-t1000: #e11d48;
+  --syn-uyari: #ea580c;
+  --syn-band: #fee2e2;
+}
+.dark {
+  --syn-hata: #fca5a5;
+  --syn-sql: #c9a2ff;
+  --syn-anahtar: #78aeff;
+  --syn-tanim: #f58cc4;
+  --syn-metod: #dcdcaa;
+  --syn-sinif: #4ade80;
+  --syn-param: #fdba74;
+  --syn-deger: #67d8ee;
+  --syn-sonuk: #7c8696;
+  --syn-t200: #fbbf24;
+  --syn-t1000: #fb7185;
+  --syn-uyari: #fb923c;
+  --syn-band: #4a1d1f;
+}
+@layer components {
+  /* Text colour only: weight and spacing stay, so characters keep their width */
+  .syn-hata { color: var(--syn-hata); }
+  .syn-sql { color: var(--syn-sql); }
+  .syn-anahtar { color: var(--syn-anahtar); }
+  .syn-tanim { color: var(--syn-tanim); }
+  .syn-metod { color: var(--syn-metod); }
+  .syn-sinif { color: var(--syn-sinif); }
+  .syn-param { color: var(--syn-param); }
+  .syn-deger { color: var(--syn-deger); }
+  .syn-sonuk { color: var(--syn-sonuk); }
+  .syn-t200 { color: var(--syn-t200); }
+  .syn-t1000 { color: var(--syn-t1000); }
+  .syn-uyari {
+    text-decoration: underline wavy var(--syn-uyari);
+    text-decoration-skip-ink: none;
+    text-underline-offset: 3px;
+  }
+  .syn-band {
+    background-color: var(--syn-band);
+  }
+}

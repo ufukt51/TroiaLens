@@ -4,6 +4,7 @@ import type { ParsedTrace } from '../../lib/types.ts'
 import type { Cursor, Nav } from '../../pages/AnalysisPage.tsx'
 import { fmtMs } from '../../lib/analyze.ts'
 import { Bar, KindChip, VirtualList, msClass } from '../ui.tsx'
+import { Code } from '../SyntaxText.tsx'
 
 type Row = { scope: true; id: number; depth: number } | { scope: false; id: number; depth: number }
 
@@ -339,7 +340,9 @@ export function CallTree({ parsed, nav, cursor }: { parsed: ParsedTrace; nav: Na
                   <span className="w-4 shrink-0" />
                   <span className="w-10 shrink-0 text-right font-mono text-[11px] text-slate-400">{st.srcLine}</span>
                   <KindChip kind={st.kind} />
-                  <span className="min-w-0 flex-1 truncate font-mono text-slate-700 dark:text-slate-300">{st.code.split('\n')[0]}</span>
+                  <span className="min-w-0 flex-1 truncate font-mono text-slate-700 dark:text-slate-300">
+                    <Code text={st.code.split('\n')[0]} />
+                  </span>
                   {st.sql?.cached && <span className="chip shrink-0 bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300">cache</span>}
                   {st.sql?.rows !== undefined && <span className="shrink-0 text-[11px] text-slate-400">{st.sql.rows} satır</span>}
                   {st.iterations !== undefined && st.iterations > 0 && <span className="shrink-0 text-[11px] text-amber-600">{st.iterations}×</span>}

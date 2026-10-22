@@ -3,6 +3,7 @@ import type { RepeatPattern, TraceResult } from '../../lib/types.ts'
 import type { Nav } from '../../pages/AnalysisPage.tsx'
 import { THRESHOLDS, fmtMs } from '../../lib/analyze.ts'
 import { Empty, KindChip, SectionTitle, msClass } from '../ui.tsx'
+import { Code, PREVIEW } from '../SyntaxText.tsx'
 
 export function RepeatsView({ result, nav }: { result: TraceResult; nav: Nav }) {
   const { analysis } = result
@@ -76,7 +77,9 @@ export function RepeatsView({ result, nav }: { result: TraceResult; nav: Nav }) 
                   <td className="td">
                     <div className="flex items-center gap-2">
                       <KindChip kind={h.kind} />
-                      <span className="max-w-xl truncate font-mono text-xs">{h.code}</span>
+                      <span className="max-w-xl truncate font-mono text-xs">
+                        <Code text={h.code} />
+                      </span>
                     </div>
                   </td>
                   <td className="td max-w-64 truncate font-mono text-xs text-slate-500" title={h.scopeName}>
@@ -100,7 +103,9 @@ function PatternCard({ r, onOpen, nav }: { r: RepeatPattern; onOpen: (fileLine: 
   return (
     <div className={`card p-4 ${severe ? 'border-l-4 border-l-rose-400' : r.kind === 'sql' && r.dbHits >= THRESHOLDS.repeatInLoop ? 'border-l-4 border-l-amber-400' : ''}`}>
       <button className="block w-full text-left" onClick={() => onOpen(r.sampleFileLine)}>
-        <div className="line-clamp-3 font-mono text-xs break-all text-slate-800 dark:text-slate-200">{r.label}</div>
+        <div className="line-clamp-3 font-mono text-xs break-all text-slate-800 dark:text-slate-200">
+          <Code text={r.label} max={PREVIEW} />
+        </div>
       </button>
       <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600 dark:text-slate-400">
         <span>

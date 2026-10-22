@@ -2,7 +2,9 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, use
 import { Maximize2, Minimize2, X } from 'lucide-react'
 import type { Mark } from '../../lib/locate.ts'
 import type { LineSource } from '../../lib/source.ts'
+import type { ColorSpan, DecoSpan } from '../../lib/syntax.ts'
 import { ResizeHandle, VirtualList } from '../ui.tsx'
+import { BAND_CLS, lineTokens, paint, type Range } from '../SyntaxText.tsx'
 
 const ROW_H = 20
 const WIDTH_KEY = 'troialens.sourceWidth'
@@ -40,12 +42,20 @@ function saveWrap(on: boolean) {
   }
 }
 
-/** Tabs as spaces, so a wrapped line's length is its width in characters */
-function expandTabs(text: string): string {
-  if (!text.includes('	')) return text
+/**
+ * Tabs as spaces, so a wrapped line's length is its width in characters; at maps an offset in the text to the
+ * expanded one (null when there is no tab)
+ */
+function expandTabs(text: string): { shown: string; at: number[] | null } {
+  if (!text.includes('	')) return { shown: text, at: null }
   let out = ''
-  for (const ch of text) out += ch === '	' ? ' '.repeat(TAB - (out.length % TAB)) : ch
-  return out
+  const at: number[] = []
+  for (let i = 0; i < text.length; i++) {
+    at.push(out.length)
+    out += text[i] === '	' ? ' '.repeat(TAB - (out.length % TAB)) : text[i]
+  }
+  at.push(out.length)
+  return { shown: out, at }
 }
 
 function saveWidth(w: number | null) {
@@ -202,11 +212,21 @@ export function SourcePane({
             const n = i + 1
             const inSpan = n >= m.from && n <= m.to
             const own = n >= m.line && n <= m.lineEnd
-            const shown = wrap ? expandTabs(text) : text
+            // Coloured on the line as written; offsets follow the tabs expanded for wrapping
+            const tok = lineTokens(text)
+            const { shown, at } = wrap ? expandTabs(text) : { shown: text, at: null }
+            const color = at ? tok.color.map(([s, e, k]): ColorSpan => [at[s], at[e], k]) : tok.color
+            const deco = at ? tok.deco.map(([s, e]): DecoSpan => [at[s], at[e]]) : tok.deco
             return (
               <div
                 className={`flex h-full cursor-pointer items-start font-mono text-xs leading-5 ${
-                  own ? 'bg-amber-200/70 dark:bg-amber-500/30' : inSpan ? 'bg-amber-50 dark:bg-amber-500/[0.07]' : 'hover:bg-slate-50 dark:hover:bg-slate-900'
+                  own
+                    ? 'bg-amber-200/70 dark:bg-amber-500/30'
+                    : tok.band
+                      ? BAND_CLS
+                      : inSpan
+                        ? 'bg-amber-50 dark:bg-amber-500/[0.07]'
+                        : 'hover:bg-slate-50 dark:hover:bg-slate-900'
                 }`}
                 onClick={() => onLine(n)}
               >
@@ -218,7 +238,7 @@ export function SourcePane({
                   {n}
                 </span>
                 <span className={`pl-3 text-slate-700 dark:text-slate-300 ${wrap ? 'min-w-0 flex-1 break-all whitespace-break-spaces' : 'whitespace-pre'}`}>
-                  {inSpan && word ? markWord(shown, word) : shown}
+                  {paint(shown, color, deco, inSpan && word ? wordAt(shown, word) : [], wordMark)}
                 </span>
               </div>
             )
@@ -233,20 +253,16 @@ export function SourcePane({
   )
 }
 
-function markWord(text: string, re: RegExp): ReactNode {
-  const parts: ReactNode[] = []
-  let i = 0
+/** Where the marked method name occurs in a line */
+function wordAt(text: string, re: RegExp): Range[] {
+  const out: Range[] = []
   re.lastIndex = 0
-  for (let m = re.exec(text); m; m = re.exec(text)) {
-    parts.push(
-      text.slice(i, m.index),
-      <mark key={m.index} className="rounded-sm bg-brand-200/80 px-px text-inherit ring-1 ring-brand-400/60 dark:bg-brand-500/30 dark:ring-brand-400/50">
-        {m[0]}
-      </mark>,
-    )
-    i = m.index + m[0].length
-  }
-  if (!parts.length) return text
-  parts.push(text.slice(i))
-  return <>{parts}</>
+  for (let m = re.exec(text); m; m = re.exec(text)) out.push([m.index, m.index + m[0].length])
+  return out
 }
+
+const wordMark = (key: number, children: ReactNode) => (
+  <mark key={key} className="rounded-sm bg-brand-200/80 px-px text-inherit ring-1 ring-brand-400/60 dark:bg-brand-500/30 dark:ring-brand-400/50">
+    {children}
+  </mark>
+)

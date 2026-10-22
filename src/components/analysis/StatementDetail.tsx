@@ -4,7 +4,9 @@ import type { ParsedTrace } from '../../lib/types.ts'
 import type { Nav } from '../../pages/AnalysisPage.tsx'
 import { fmtMs, issueText } from '../../lib/analyze.ts'
 import { editorLine } from '../../lib/locate.ts'
+import { tokenizeTrail } from '../../lib/syntax.ts'
 import { CodeBlock, KindChip, ResizeHandle, formatSql, msClass } from '../ui.tsx'
+import { Code, DetailLines, paint } from '../SyntaxText.tsx'
 
 const HEIGHT_KEY = 'troialens.detailHeight'
 const MIN_H = 120
@@ -156,8 +158,8 @@ export function StatementDetail({
         </div>
       )}
 
-      <Block title="Kod">{st.sql ? formatSql(st.code) : st.code}</Block>
-      {st.trail && <Block title="Değerlendirme">{st.trail}</Block>}
+      <Block title="Kod">{st.sql ? <Code text={formatSql(st.code)} sql /> : <Code text={st.code} />}</Block>
+      {st.trail && <Block title="Değerlendirme">{paintTrail(st.trail)}</Block>}
       {st.cut && (
         <div className="text-xs text-slate-500">
           Metin uzun olduğu için kısaltıldı.{' '}
@@ -180,7 +182,9 @@ export function StatementDetail({
               </span>
             ))}
           </div>
-          {st.sql.resolved && <Block title="Veritabanına giden sorgu">{formatSql(st.sql.resolved)}</Block>}
+          {st.sql.resolved && <Block title="Veritabanına giden sorgu">
+              <Code text={formatSql(st.sql.resolved)} sql />
+            </Block>}
         </div>
       )}
 
@@ -202,7 +206,9 @@ export function StatementDetail({
         </div>
       )}
 
-      {st.details.length > 0 && <Block title="Ayrıntılar">{st.details.join('\n')}</Block>}
+      {st.details.length > 0 && <Block title="Ayrıntılar">
+          <DetailLines lines={st.details} />
+        </Block>}
     </div>
   )
 
@@ -240,6 +246,11 @@ export function StatementDetail({
       {body}
     </section>
   )
+}
+
+function paintTrail(trail: string) {
+  const t = tokenizeTrail(trail)
+  return paint(trail, t.color, t.deco)
 }
 
 function Stat({ label, value }: { label: string; value: React.ReactNode }) {

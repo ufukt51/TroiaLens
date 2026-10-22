@@ -1,0 +1,2295 @@
+{
+ "lines": [
+  {
+   "in": "TROIA CODE EXECUTION TRACE",
+   "color": [
+    [
+     0,
+     26,
+     "anahtar"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": "TRACE INFORMATION▎",
+   "color": [
+    [
+     0,
+     17,
+     "anahtar"
+    ],
+    [
+     17,
+     18,
+     "sonuk"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": "LOGIN INFORMATION ",
+   "color": [
+    [
+     0,
+     17,
+     "anahtar"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": "Client               : [00] ",
+   "color": [
+    [
+     0,
+     6,
+     "sonuk"
+    ],
+    [
+     24,
+     26,
+     "deger"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": "Login Date           : [15.10.2026 07:45:55] ",
+   "color": [
+    [
+     0,
+     10,
+     "sonuk"
+    ],
+    [
+     24,
+     43,
+     "deger"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": "PRDT21F001 -> HPLPRDT21F001, (SYSDLGREF) ",
+   "color": [
+    [
+     0,
+     10,
+     "sonuk"
+    ],
+    [
+     14,
+     27,
+     "sinif"
+    ],
+    [
+     27,
+     40,
+     "sonuk"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": "[Old Dialog] -> [New Dialog] ",
+   "color": [
+    [
+     0,
+     28,
+     "sonuk"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": "-----------------------------------------------▏",
+   "color": [
+    [
+     0,
+     47,
+     "sonuk"
+    ],
+    [
+     47,
+     48,
+     "sonuk"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": "HPLT15F001.BEFORE.0 ▎",
+   "color": [
+    [
+     0,
+     10,
+     "sinif"
+    ],
+    [
+     11,
+     17,
+     "metod"
+    ],
+    [
+     17,
+     19,
+     "sonuk"
+    ],
+    [
+     20,
+     21,
+     "sonuk"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": " \t(HPLCIASUSERS.CIASUSERS) CIASUSERSREC.CHKSUBPROFILES.0 ▎",
+   "color": [
+    [
+     2,
+     26,
+     "sinif"
+    ],
+    [
+     27,
+     39,
+     "sinif"
+    ],
+    [
+     40,
+     54,
+     "metod"
+    ],
+    [
+     54,
+     56,
+     "sonuk"
+    ],
+    [
+     57,
+     58,
+     "sonuk"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": " \tSYST03F002.UPDATE.2 ▎",
+   "color": [
+    [
+     2,
+     12,
+     "sinif"
+    ],
+    [
+     13,
+     19,
+     "metod"
+    ],
+    [
+     19,
+     21,
+     "sonuk"
+    ],
+    [
+     22,
+     23,
+     "sonuk"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": " [0 ms]    [(HPLCIASUSERS.CIASUSERS) CIASUSERSREC.CHKSUBPROFILES.0 3] : PARAMETERS  ",
+   "color": [
+    [
+     1,
+     7,
+     "sonuk"
+    ],
+    [
+     11,
+     50,
+     "sonuk"
+    ],
+    [
+     50,
+     64,
+     "metod"
+    ],
+    [
+     64,
+     69,
+     "sonuk"
+    ],
+    [
+     72,
+     82,
+     "tanim"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": "\tPSOURCEPROFILE[HPR00006] <= IASUSERS_USERNAME[HPR00006]",
+   "color": [
+    [
+     1,
+     15,
+     "param"
+    ],
+    [
+     16,
+     24,
+     "deger"
+    ],
+    [
+     25,
+     29,
+     "sonuk"
+    ],
+    [
+     47,
+     55,
+     "deger"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": "\tPTARGETPROFILES[] <= IASUSERS_USERPROFILE[]",
+   "color": [
+    [
+     1,
+     16,
+     "param"
+    ],
+    [
+     18,
+     22,
+     "sonuk"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": "\tPLANGU[] <=  ??? !!Missing Parameter!! ",
+   "color": [
+    [
+     1,
+     7,
+     "param"
+    ],
+    [
+     9,
+     14,
+     "sonuk"
+    ]
+   ],
+   "deco": [
+    [
+     14,
+     39
+    ]
+   ],
+   "band": false
+  },
+  {
+   "in": "\tISZMAFTER[0] <=  ??? !!Missing Parameter!!  ",
+   "color": [
+    [
+     1,
+     10,
+     "param"
+    ],
+    [
+     11,
+     12,
+     "deger"
+    ],
+    [
+     13,
+     18,
+     "sonuk"
+    ]
+   ],
+   "deco": [
+    [
+     18,
+     43
+    ]
+   ],
+   "band": false
+  },
+  {
+   "in": " [0 ms]    [(CIASBAS039) CIASBAS039REC._VARIABLES.0 5] : OBJECT: CLASS[CIASBAS039XREC] CIASBAS039XREC, STRING LID, STRING TLOCKKEY, INTEGER MODI;  ▏",
+   "color": [
+    [
+     1,
+     7,
+     "sonuk"
+    ],
+    [
+     11,
+     39,
+     "sonuk"
+    ],
+    [
+     39,
+     49,
+     "metod"
+    ],
+    [
+     49,
+     54,
+     "sonuk"
+    ],
+    [
+     57,
+     64,
+     "tanim"
+    ],
+    [
+     65,
+     86,
+     "sinif"
+    ],
+    [
+     87,
+     101,
+     "param"
+    ],
+    [
+     103,
+     109,
+     "sinif"
+    ],
+    [
+     110,
+     113,
+     "param"
+    ],
+    [
+     115,
+     121,
+     "sinif"
+    ],
+    [
+     122,
+     130,
+     "param"
+    ],
+    [
+     132,
+     139,
+     "sinif"
+    ],
+    [
+     140,
+     144,
+     "param"
+    ],
+    [
+     147,
+     148,
+     "sonuk"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": " [0 ms]    [(X) XREC.M.0 4] : LOCAL: STRING vOLUSTURAN, DECIMAL TOTAL;",
+   "color": [
+    [
+     1,
+     7,
+     "sonuk"
+    ],
+    [
+     11,
+     21,
+     "sonuk"
+    ],
+    [
+     21,
+     22,
+     "metod"
+    ],
+    [
+     22,
+     27,
+     "sonuk"
+    ],
+    [
+     30,
+     36,
+     "tanim"
+    ],
+    [
+     37,
+     43,
+     "sinif"
+    ],
+    [
+     44,
+     54,
+     "param"
+    ],
+    [
+     56,
+     63,
+     "sinif"
+    ],
+    [
+     64,
+     69,
+     "param"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": " [0 ms]    [(HPLX) XREC.M.0 4] : OBJECT:  ",
+   "color": [
+    [
+     1,
+     7,
+     "sonuk"
+    ],
+    [
+     11,
+     24,
+     "sonuk"
+    ],
+    [
+     24,
+     25,
+     "metod"
+    ],
+    [
+     25,
+     30,
+     "sonuk"
+    ],
+    [
+     33,
+     40,
+     "tanim"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": " [0 ms]    [(CIASBAS039) CIASBAS039REC._CONSTRUCTOR.0 1] : LID = 'IASBAS039'; [IASBAS039] ▏",
+   "color": [
+    [
+     1,
+     7,
+     "sonuk"
+    ],
+    [
+     11,
+     39,
+     "sonuk"
+    ],
+    [
+     39,
+     51,
+     "metod"
+    ],
+    [
+     51,
+     56,
+     "sonuk"
+    ],
+    [
+     59,
+     62,
+     "param"
+    ],
+    [
+     65,
+     76,
+     "deger"
+    ],
+    [
+     79,
+     88,
+     "deger"
+    ],
+    [
+     90,
+     91,
+     "sonuk"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": " [0 ms]    [(CIASERRMSG) CIASERRMSGREC.GETMESSAGE.0 14] : MESSAGES = ''; []",
+   "color": [
+    [
+     1,
+     7,
+     "sonuk"
+    ],
+    [
+     11,
+     39,
+     "sonuk"
+    ],
+    [
+     39,
+     49,
+     "metod"
+    ],
+    [
+     49,
+     55,
+     "sonuk"
+    ],
+    [
+     58,
+     66,
+     "param"
+    ],
+    [
+     69,
+     71,
+     "deger"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": " [0 ms]    [SYST03F002.UPDATE.2 1] : IF SYS_TRANSACTION == 'SYST03' THEN : SYS_TRANSACTION[SYST03] == SYST03[SYST03] -> 1",
+   "color": [
+    [
+     1,
+     7,
+     "sonuk"
+    ],
+    [
+     11,
+     23,
+     "sonuk"
+    ],
+    [
+     23,
+     29,
+     "metod"
+    ],
+    [
+     29,
+     34,
+     "sonuk"
+    ],
+    [
+     37,
+     39,
+     "anahtar"
+    ],
+    [
+     59,
+     67,
+     "deger"
+    ],
+    [
+     68,
+     72,
+     "anahtar"
+    ],
+    [
+     91,
+     97,
+     "deger"
+    ],
+    [
+     109,
+     115,
+     "deger"
+    ],
+    [
+     117,
+     121,
+     "sinif"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": " [0 ms]    [HPLOPMT01FN14.FILL.0 138] : IF SYS_STATUS == 0 THEN : SYS_STATUS[1] == 0[0] -> 0",
+   "color": [
+    [
+     1,
+     7,
+     "sonuk"
+    ],
+    [
+     11,
+     26,
+     "sonuk"
+    ],
+    [
+     26,
+     30,
+     "metod"
+    ],
+    [
+     30,
+     37,
+     "sonuk"
+    ],
+    [
+     40,
+     42,
+     "anahtar"
+    ],
+    [
+     57,
+     58,
+     "deger"
+    ],
+    [
+     59,
+     63,
+     "anahtar"
+    ],
+    [
+     77,
+     78,
+     "deger"
+    ],
+    [
+     85,
+     86,
+     "deger"
+    ],
+    [
+     88,
+     92,
+     "sonuk"
+    ]
+   ],
+   "deco": [
+    [
+     66,
+     79
+    ]
+   ],
+   "band": false
+  },
+  {
+   "in": " [0 ms]    [(C) CREC.F.0 63] : IF SYS_STATUS THEN :  -> SYS_STATUS[1]",
+   "color": [
+    [
+     1,
+     7,
+     "sonuk"
+    ],
+    [
+     11,
+     21,
+     "sonuk"
+    ],
+    [
+     21,
+     22,
+     "metod"
+    ],
+    [
+     22,
+     28,
+     "sonuk"
+    ],
+    [
+     31,
+     33,
+     "anahtar"
+    ],
+    [
+     45,
+     49,
+     "anahtar"
+    ],
+    [
+     67,
+     68,
+     "deger"
+    ]
+   ],
+   "deco": [
+    [
+     56,
+     69
+    ]
+   ],
+   "band": false
+  },
+  {
+   "in": "\t+TRUE BLOCK STARTED",
+   "color": [
+    [
+     1,
+     20,
+     "sonuk"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": "\t-TRUE BLOCK ENDED ▏ ▏ -> 0[0],  -> 0[0], 0 == 0[0] -> 1",
+   "color": [
+    [
+     1,
+     18,
+     "sonuk"
+    ],
+    [
+     19,
+     20,
+     "sonuk"
+    ],
+    [
+     21,
+     22,
+     "sonuk"
+    ],
+    [
+     28,
+     29,
+     "deger"
+    ],
+    [
+     38,
+     39,
+     "deger"
+    ],
+    [
+     49,
+     50,
+     "deger"
+    ],
+    [
+     52,
+     56,
+     "sinif"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": "\t+START ITERATION{2259}",
+   "color": [
+    [
+     1,
+     23,
+     "sonuk"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": "\t+ACTIVE ROW: 11687 at TMPIASCUSTOMER",
+   "color": [
+    [
+     1,
+     37,
+     "sonuk"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": "\t> CONDITION: INT1[1] <= 22[22] -> 1",
+   "color": [
+    [
+     1,
+     13,
+     "sonuk"
+    ],
+    [
+     19,
+     20,
+     "deger"
+    ],
+    [
+     28,
+     30,
+     "deger"
+    ],
+    [
+     32,
+     36,
+     "sinif"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": "\t-ENDWHILE ▏ ▏",
+   "color": [
+    [
+     1,
+     10,
+     "sonuk"
+    ],
+    [
+     11,
+     12,
+     "sonuk"
+    ],
+    [
+     13,
+     14,
+     "sonuk"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": " [78 ms]   [(HPLCIASOPPORTUNITIES.CIASOPPORTUNITIES) CIASOPPORTUNITIESREC.INITTABLEOBJSP.0 13] : THIS.APPENDCOLUMNVIRTUAL() ",
+   "color": [
+    [
+     11,
+     74,
+     "sonuk"
+    ],
+    [
+     74,
+     88,
+     "metod"
+    ],
+    [
+     88,
+     94,
+     "sonuk"
+    ],
+    [
+     97,
+     101,
+     "anahtar"
+    ],
+    [
+     102,
+     121,
+     "metod"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": " [112 ms]  [HPLOPMT100D008.CALLDETAIL.0 30] : HPLCIASOPPORTUNITIES.INITTABLEOBJSP() ",
+   "color": [
+    [
+     11,
+     27,
+     "sonuk"
+    ],
+    [
+     27,
+     37,
+     "metod"
+    ],
+    [
+     37,
+     43,
+     "sonuk"
+    ],
+    [
+     46,
+     66,
+     "sinif"
+    ],
+    [
+     67,
+     81,
+     "metod"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": " [1 ms]    [(CSYSTHEME) CSYSTHEMEREC.FETCH.0 7] : SELECT  * \tFROM SYSTHEME \tWHERE CLIENT = SYS_CLIENT \t\tAND THEME =  PTHEME",
+   "color": [
+    [
+     11,
+     37,
+     "sonuk"
+    ],
+    [
+     37,
+     42,
+     "metod"
+    ],
+    [
+     42,
+     47,
+     "sonuk"
+    ],
+    [
+     50,
+     56,
+     "sql"
+    ],
+    [
+     61,
+     65,
+     "sql"
+    ],
+    [
+     66,
+     74,
+     "sinif"
+    ],
+    [
+     76,
+     81,
+     "sql"
+    ],
+    [
+     104,
+     107,
+     "sql"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": " [4 ms]    [(HPLCIASDOCITEM.CIASDOCITEM) CIASDOCITEMREC.SAVEITNEW.0 171] : UPDATE  IASDOCHEAD ",
+   "color": [
+    [
+     11,
+     56,
+     "sonuk"
+    ],
+    [
+     56,
+     65,
+     "metod"
+    ],
+    [
+     65,
+     72,
+     "sonuk"
+    ],
+    [
+     75,
+     81,
+     "sql"
+    ],
+    [
+     83,
+     93,
+     "sinif"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": "\tSET STATUS = 2 ",
+   "color": [
+    [
+     1,
+     4,
+     "sql"
+    ],
+    [
+     14,
+     15,
+     "deger"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": "\tWHERE CLIENT = SYS_CLIENT ",
+   "color": [
+    [
+     1,
+     6,
+     "sql"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": "\t\tAND USERNAME = PUSERNAME ",
+   "color": [
+    [
+     2,
+     5,
+     "sql"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": "\t INTO TMPOFFERS ",
+   "color": [
+    [
+     2,
+     6,
+     "sql"
+    ],
+    [
+     7,
+     16,
+     "sinif"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": "\t->DB [SELECT * FROM SYSTHEME WHERE CLIENT = '00' AND THEME = 'Flat Yellow']",
+   "color": [
+    [
+     1,
+     5,
+     "sql"
+    ],
+    [
+     7,
+     13,
+     "sql"
+    ],
+    [
+     16,
+     20,
+     "sql"
+    ],
+    [
+     21,
+     29,
+     "sinif"
+    ],
+    [
+     30,
+     35,
+     "sql"
+    ],
+    [
+     45,
+     49,
+     "deger"
+    ],
+    [
+     50,
+     53,
+     "sql"
+    ],
+    [
+     62,
+     75,
+     "deger"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": "\t->DB CACHE [SELECT * FROM IASSYSTEM WHERE CLIENT = '00']",
+   "color": [
+    [
+     1,
+     5,
+     "sql"
+    ],
+    [
+     6,
+     11,
+     "sonuk"
+    ],
+    [
+     13,
+     19,
+     "sql"
+    ],
+    [
+     22,
+     26,
+     "sql"
+    ],
+    [
+     27,
+     36,
+     "sinif"
+    ],
+    [
+     37,
+     42,
+     "sql"
+    ],
+    [
+     52,
+     56,
+     "deger"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": "\t->DB []",
+   "color": [
+    [
+     1,
+     5,
+     "sql"
+    ]
+   ],
+   "deco": [
+    [
+     1,
+     8
+    ]
+   ],
+   "band": false
+  },
+  {
+   "in": "\t[SELECTED[1], NOTSELECTED[0], SYS_STATUS[0]]",
+   "color": [
+    [
+     11,
+     12,
+     "deger"
+    ],
+    [
+     27,
+     28,
+     "deger"
+    ],
+    [
+     42,
+     43,
+     "deger"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": "\t[SELECTED[0], NOTSELECTED[1], SYS_STATUS[1]]",
+   "color": [
+    [
+     11,
+     12,
+     "deger"
+    ],
+    [
+     27,
+     28,
+     "deger"
+    ],
+    [
+     42,
+     43,
+     "deger"
+    ]
+   ],
+   "deco": [
+    [
+     31,
+     44
+    ]
+   ],
+   "band": false
+  },
+  {
+   "in": "\t[Number of rows : 1]",
+   "color": [
+    [
+     1,
+     19,
+     "sonuk"
+    ],
+    [
+     19,
+     20,
+     "deger"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": "\t[AFFECTED ROW COUNT: 0]",
+   "color": [
+    [
+     1,
+     22,
+     "sonuk"
+    ],
+    [
+     22,
+     23,
+     "deger"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": " [0 ms]    [(CSYSTHEME) CSYSTHEMEREC.FETCH.0 9] : RETURN SELECTED  : SELECTED[0] ▏",
+   "color": [
+    [
+     1,
+     7,
+     "sonuk"
+    ],
+    [
+     11,
+     37,
+     "sonuk"
+    ],
+    [
+     37,
+     42,
+     "metod"
+    ],
+    [
+     42,
+     47,
+     "sonuk"
+    ],
+    [
+     50,
+     56,
+     "anahtar"
+    ],
+    [
+     78,
+     79,
+     "deger"
+    ],
+    [
+     81,
+     82,
+     "sonuk"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": " [0 ms]    [(CIASOPPOFFERS) CIASOPPOFFERSREC.FETCHOBJAFTER.0 5] : COPY  TABLE TMPOFFERS INTO TMPOFFERSYDK WITHFLAGS ",
+   "color": [
+    [
+     1,
+     7,
+     "sonuk"
+    ],
+    [
+     11,
+     45,
+     "sonuk"
+    ],
+    [
+     45,
+     58,
+     "metod"
+    ],
+    [
+     58,
+     63,
+     "sonuk"
+    ],
+    [
+     66,
+     70,
+     "anahtar"
+    ],
+    [
+     72,
+     77,
+     "anahtar"
+    ],
+    [
+     88,
+     92,
+     "anahtar"
+    ],
+    [
+     106,
+     115,
+     "anahtar"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": "\tErrors: ",
+   "color": [
+    [
+     1,
+     8,
+     "hata"
+    ]
+   ],
+   "deco": [],
+   "band": true
+  },
+  {
+   "in": "\tErrors: SET command could not find control:LBLNONMOVDATE",
+   "color": [
+    [
+     1,
+     57,
+     "hata"
+    ]
+   ],
+   "deco": [],
+   "band": true
+  },
+  {
+   "in": "\t\t * Source table is null in COPY command",
+   "color": [
+    [
+     3,
+     41,
+     "hata"
+    ]
+   ],
+   "deco": [],
+   "band": true
+  },
+  {
+   "in": " [3 ms]    [HPLWMST02F002.HPLFINDDIFFPROJECT.0 59] : MESSAGE HPL E2002 WITH  SYS_EXTLTEXT[Proje Kodu Olmalıdır]  : MSG[Proje Kodu Olmalıdır]",
+   "color": [
+    [
+     11,
+     26,
+     "sonuk"
+    ],
+    [
+     26,
+     44,
+     "metod"
+    ],
+    [
+     44,
+     50,
+     "sonuk"
+    ],
+    [
+     53,
+     140,
+     "hata"
+    ]
+   ],
+   "deco": [],
+   "band": true
+  },
+  {
+   "in": " [1 ms]    [HPLX.Y.2 5] : MESSAGE HPL W1001 WITH  SYS_EXTLTEXT[Dikkat]  : MSG[Dikkat]",
+   "color": [
+    [
+     11,
+     17,
+     "sonuk"
+    ],
+    [
+     17,
+     18,
+     "metod"
+    ],
+    [
+     18,
+     23,
+     "sonuk"
+    ],
+    [
+     26,
+     33,
+     "anahtar"
+    ],
+    [
+     44,
+     48,
+     "anahtar"
+    ],
+    [
+     78,
+     84,
+     "deger"
+    ]
+   ],
+   "deco": [
+    [
+     26,
+     70
+    ]
+   ],
+   "band": false
+  },
+  {
+   "in": " [0 ms]    [HPLX.Y.2 6] : MESSAGE DOC I20 ",
+   "color": [
+    [
+     1,
+     7,
+     "sonuk"
+    ],
+    [
+     11,
+     17,
+     "sonuk"
+    ],
+    [
+     17,
+     18,
+     "metod"
+    ],
+    [
+     18,
+     23,
+     "sonuk"
+    ],
+    [
+     26,
+     33,
+     "anahtar"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": "\tWarnings: ??? <= CONSTANT!! Too many parameters.",
+   "color": [],
+   "deco": [
+    [
+     1,
+     49
+    ]
+   ],
+   "band": false
+  },
+  {
+   "in": " [19 sec]  [HPLOPMT01FN14.ONSHOW.0 14] : LOOP AT TMPFILECONTROLTABLE BEGIN   : TOTAL 1 ROWS",
+   "color": [
+    [
+     1,
+     9,
+     "t1000"
+    ],
+    [
+     11,
+     26,
+     "sonuk"
+    ],
+    [
+     26,
+     32,
+     "metod"
+    ],
+    [
+     32,
+     38,
+     "sonuk"
+    ],
+    [
+     41,
+     45,
+     "anahtar"
+    ],
+    [
+     46,
+     48,
+     "anahtar"
+    ],
+    [
+     69,
+     74,
+     "anahtar"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": " [10 min]  [HPLOPMT100D062.UPDATE.2 90] : SHUTDOWN  ▏",
+   "color": [
+    [
+     1,
+     9,
+     "t1000"
+    ],
+    [
+     11,
+     27,
+     "sonuk"
+    ],
+    [
+     27,
+     33,
+     "metod"
+    ],
+    [
+     33,
+     39,
+     "sonuk"
+    ],
+    [
+     42,
+     50,
+     "anahtar"
+    ],
+    [
+     52,
+     53,
+     "sonuk"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": " [1500 ms] [HPLX.Y.0 1] : BREAK",
+   "color": [
+    [
+     1,
+     10,
+     "t1000"
+    ],
+    [
+     11,
+     17,
+     "sonuk"
+    ],
+    [
+     17,
+     18,
+     "metod"
+    ],
+    [
+     18,
+     23,
+     "sonuk"
+    ],
+    [
+     26,
+     31,
+     "anahtar"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": " [250 ms]  [HPLX.Y.0 1] : CONTINUE",
+   "color": [
+    [
+     1,
+     9,
+     "t200"
+    ],
+    [
+     11,
+     17,
+     "sonuk"
+    ],
+    [
+     17,
+     18,
+     "metod"
+    ],
+    [
+     18,
+     23,
+     "sonuk"
+    ],
+    [
+     26,
+     34,
+     "anahtar"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": " [ ~ ]     [HPLSYST03F001.CALLDETAIL.0 41] : CALL DIALOG SYST03F002",
+   "color": [
+    [
+     1,
+     6,
+     "sonuk"
+    ],
+    [
+     11,
+     26,
+     "sonuk"
+    ],
+    [
+     26,
+     36,
+     "metod"
+    ],
+    [
+     36,
+     42,
+     "sonuk"
+    ],
+    [
+     45,
+     49,
+     "anahtar"
+    ],
+    [
+     50,
+     56,
+     "anahtar"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": "           [HPLOPMT100D008.CALLDETAIL.0 49] : RETURN 1  : 1[1]",
+   "color": [
+    [
+     11,
+     27,
+     "sonuk"
+    ],
+    [
+     27,
+     37,
+     "metod"
+    ],
+    [
+     37,
+     43,
+     "sonuk"
+    ],
+    [
+     46,
+     52,
+     "anahtar"
+    ],
+    [
+     53,
+     54,
+     "deger"
+    ],
+    [
+     60,
+     61,
+     "deger"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": " [0 ms]    [(CIASOPPCOMPETITOR) CIASOPPCOMPETITORREC.FETCHOBJAFTER.0 9] : MOVE 4 TO IASOPPCOMPETITOR_ISCUSTORVEND  : [IASOPPCOMPETITOR_ISCUSTORVEND[4]]",
+   "color": [
+    [
+     1,
+     7,
+     "sonuk"
+    ],
+    [
+     11,
+     53,
+     "sonuk"
+    ],
+    [
+     53,
+     66,
+     "metod"
+    ],
+    [
+     66,
+     71,
+     "sonuk"
+    ],
+    [
+     74,
+     78,
+     "anahtar"
+    ],
+    [
+     79,
+     80,
+     "deger"
+    ],
+    [
+     81,
+     83,
+     "anahtar"
+    ],
+    [
+     148,
+     149,
+     "deger"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": " [0 ms]    [(CIASHCM315) CIASHCM315REC.LOCATEPERIOD.0 13] : LOCATERECORD INDEXED INDEX [INDEX315] VALUES [01][2026][07][0] ON GLOBHCM315  ",
+   "color": [
+    [
+     1,
+     7,
+     "sonuk"
+    ],
+    [
+     11,
+     39,
+     "sonuk"
+    ],
+    [
+     39,
+     51,
+     "metod"
+    ],
+    [
+     51,
+     57,
+     "sonuk"
+    ],
+    [
+     60,
+     72,
+     "anahtar"
+    ],
+    [
+     73,
+     80,
+     "anahtar"
+    ],
+    [
+     81,
+     86,
+     "anahtar"
+    ],
+    [
+     98,
+     104,
+     "anahtar"
+    ],
+    [
+     106,
+     108,
+     "deger"
+    ],
+    [
+     110,
+     114,
+     "deger"
+    ],
+    [
+     116,
+     118,
+     "deger"
+    ],
+    [
+     120,
+     121,
+     "deger"
+    ],
+    [
+     123,
+     125,
+     "anahtar"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": " [0 ms]    [HPLOPMT100D062.SETCAPTION.0 51] : SCCOMBOBOX = SCCOMBOBOX + TOCHAR(59) + TMPIASBAS013X_STEXT; [Ambalaj;Bayii]",
+   "color": [
+    [
+     1,
+     7,
+     "sonuk"
+    ],
+    [
+     11,
+     27,
+     "sonuk"
+    ],
+    [
+     27,
+     37,
+     "metod"
+    ],
+    [
+     37,
+     43,
+     "sonuk"
+    ],
+    [
+     46,
+     56,
+     "param"
+    ],
+    [
+     79,
+     81,
+     "deger"
+    ],
+    [
+     107,
+     120,
+     "deger"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": " [2 ms]    [(CIASNUMRANGE) CIASNUMRANGEREC.NEWNUMBERBYPARTS.0 30] : ENQUE ID'NR' WITH LCKKEY  ",
+   "color": [
+    [
+     11,
+     43,
+     "sonuk"
+    ],
+    [
+     43,
+     59,
+     "metod"
+    ],
+    [
+     59,
+     65,
+     "sonuk"
+    ],
+    [
+     68,
+     73,
+     "anahtar"
+    ],
+    [
+     76,
+     80,
+     "deger"
+    ],
+    [
+     81,
+     85,
+     "anahtar"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": " [0 ms]    [(HPLCIASUSERS) CIASUSERSREC.SAVEIT.0 13] : BEGINTRAN  ",
+   "color": [
+    [
+     1,
+     7,
+     "sonuk"
+    ],
+    [
+     11,
+     40,
+     "sonuk"
+    ],
+    [
+     40,
+     46,
+     "metod"
+    ],
+    [
+     46,
+     52,
+     "sonuk"
+    ],
+    [
+     55,
+     64,
+     "anahtar"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": " [0 ms]    [(HPLX) XREC.Y.0 2] : DELETEDPATH = 'C:\\tmp'; [C:\\tmp]",
+   "color": [
+    [
+     1,
+     7,
+     "sonuk"
+    ],
+    [
+     11,
+     24,
+     "sonuk"
+    ],
+    [
+     24,
+     25,
+     "metod"
+    ],
+    [
+     25,
+     30,
+     "sonuk"
+    ],
+    [
+     33,
+     44,
+     "param"
+    ],
+    [
+     47,
+     55,
+     "deger"
+    ],
+    [
+     58,
+     64,
+     "deger"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": "\t\t&& IASOPPORTUNITIES_UPDATED == 1 ",
+   "color": [
+    [
+     33,
+     34,
+     "deger"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": " [2 ms]    [HPLOPMT100D008.HPLFETCHMATX.0 20] : SELECT  A.MATERIAL, X.STEXT FROM IASMATBASIC\r\tINNER JOIN IASMATX ON A.CLIENT = X.CLIENT\r INTO TMPLST",
+   "color": [
+    [
+     11,
+     27,
+     "sonuk"
+    ],
+    [
+     27,
+     39,
+     "metod"
+    ],
+    [
+     39,
+     45,
+     "sonuk"
+    ],
+    [
+     48,
+     54,
+     "sql"
+    ],
+    [
+     76,
+     80,
+     "sql"
+    ],
+    [
+     81,
+     92,
+     "sinif"
+    ],
+    [
+     94,
+     99,
+     "sql"
+    ],
+    [
+     100,
+     104,
+     "sql"
+    ],
+    [
+     105,
+     112,
+     "sinif"
+    ],
+    [
+     113,
+     115,
+     "sql"
+    ],
+    [
+     137,
+     141,
+     "sql"
+    ],
+    [
+     142,
+     148,
+     "sinif"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": "\tCHANGED COLUMNS: CLIENT[00], USERNAME[selin.turkol], SYSISTRACE",
+   "color": [
+    [
+     1,
+     17,
+     "sonuk"
+    ],
+    [
+     25,
+     27,
+     "deger"
+    ],
+    [
+     39,
+     51,
+     "deger"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": "\tCUSTOMER:H11454",
+   "color": [
+    [
+     1,
+     9,
+     "param"
+    ],
+    [
+     10,
+     16,
+     "deger"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": "\tSALDEPT:",
+   "color": [
+    [
+     1,
+     8,
+     "param"
+    ]
+   ],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": "    <div class=\"leave-summary-card annual\">",
+   "color": [],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": "Tutar 0' dan küçük olamaz! SELECT FROM IF",
+   "color": [],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": "OBJECT DUMP { Name: DOCUMENTITEMS, DB Name: IASDOCITEM, Column count: 37 }",
+   "color": [],
+   "deco": [],
+   "band": false
+  },
+  {
+   "in": "",
+   "color": [],
+   "deco": [],
+   "band": false
+  }
+ ],
+ "code": [
+  {
+   "in": "IF A == 'x' THEN",
+   "color": [
+    [
+     0,
+     2,
+     "anahtar"
+    ],
+    [
+     8,
+     11,
+     "deger"
+    ],
+    [
+     12,
+     16,
+     "anahtar"
+    ]
+   ]
+  },
+  {
+   "in": "SELECT * FROM IASUSERS WHERE CLIENT = '00'",
+   "color": [
+    [
+     0,
+     6,
+     "sql"
+    ],
+    [
+     9,
+     13,
+     "sql"
+    ],
+    [
+     14,
+     22,
+     "sinif"
+    ],
+    [
+     23,
+     28,
+     "sql"
+    ],
+    [
+     38,
+     42,
+     "deger"
+    ]
+   ]
+  },
+  {
+   "in": "THIS.FOO(1, 'a')",
+   "color": [
+    [
+     0,
+     4,
+     "anahtar"
+    ],
+    [
+     5,
+     8,
+     "metod"
+    ],
+    [
+     9,
+     10,
+     "deger"
+    ],
+    [
+     12,
+     15,
+     "deger"
+    ]
+   ]
+  },
+  {
+   "in": "LOOP AT T BEGIN",
+   "color": [
+    [
+     0,
+     4,
+     "anahtar"
+    ],
+    [
+     5,
+     7,
+     "anahtar"
+    ],
+    [
+     10,
+     15,
+     "anahtar"
+    ]
+   ]
+  }
+ ],
+ "trail": [
+  {
+   "in": " : SYS_STATUS[1] == 0[0] -> 0",
+   "color": [
+    [
+     14,
+     15,
+     "deger"
+    ],
+    [
+     22,
+     23,
+     "deger"
+    ],
+    [
+     25,
+     29,
+     "sonuk"
+    ]
+   ],
+   "deco": [
+    [
+     3,
+     16
+    ]
+   ]
+  },
+  {
+   "in": " : X[a], Y[] -> 1 ▏",
+   "color": [
+    [
+     5,
+     6,
+     "deger"
+    ],
+    [
+     13,
+     17,
+     "sinif"
+    ],
+    [
+     18,
+     19,
+     "sonuk"
+    ]
+   ],
+   "deco": []
+  }
+ ]
+}

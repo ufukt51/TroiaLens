@@ -4,6 +4,7 @@ import type { TraceResult } from '../../lib/types.ts'
 import type { Nav, Tab } from '../../pages/AnalysisPage.tsx'
 import { fmtMs } from '../../lib/analyze.ts'
 import { Bar, KindChip, Kpi, SEVERITY_META, SectionTitle, msClass } from '../ui.tsx'
+import { Code } from '../SyntaxText.tsx'
 
 export function Overview({ result, nav, goTab }: { result: TraceResult; nav: Nav; goTab: (t: Tab) => void }) {
   const { parsed, analysis } = result
@@ -148,7 +149,9 @@ export function Overview({ result, nav, goTab }: { result: TraceResult; nav: Nav
               <li key={id}>
                 <button className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left hover:bg-slate-50 dark:hover:bg-slate-800/50" onClick={() => nav.select(id)}>
                   <KindChip kind={st.kind} />
-                  <span className="min-w-0 flex-1 truncate font-mono text-xs">{st.code.split('\n')[0]}</span>
+                  <span className="min-w-0 flex-1 truncate font-mono text-xs">
+                    <Code text={st.code.split('\n')[0]} />
+                  </span>
                   <span className={`shrink-0 text-xs tabular-nums ${msClass(st.exclMs)}`} title={`Raporlanan: ${fmtMs(st.ms)}`}>
                     {fmtMs(st.exclMs)}
                   </span>

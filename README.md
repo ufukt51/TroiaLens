@@ -33,6 +33,7 @@ Trace dosyasını (`.trace`, `.txt` veya `.log`) ana sayfaya sürükleyin ya da 
 - **Tekrarlar:** Bir döngünün içinde defalarca çalışan sorguları ve metotları bulur (N+1 sorunu).
 - **Mesajlar:** İşlem sırasında verilen hata, uyarı, bilgi ve başarı mesajları.
 - **Hata/Uyarı:** Trace'te geçen hatalar, uyarılar ve eksik parametreler tek bir listede.
+- **Sözdizimi renklendirmesi:** Ham dosya, kaynak görünümü, ağaç ve ayrıntıda kod, SQL, değerler, süreler ve hatalar renkli gösterilir.
 - Ham dosya görünümü, geçmiş (yalnızca bu tarayıcıda saklanır), açık ve koyu tema.
 - **Büyük dosyalar:** Dosya parça parça okunur, tamamı belleğe alınmaz; 1 GB'ı aşan trace'ler de açılır. Ham dosya
   ve kaynak görünümü satırları ekrana geldikçe dosyadan okur. Çok uzun satır değerleri ayrıntı panelinde kısaltılır;
