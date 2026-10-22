@@ -1,15 +1,15 @@
-import { useState } from 'react'
 import { Activity, AlertOctagon, Clock, Database, GitBranch, Layers, Repeat } from 'lucide-react'
 import type { TraceResult } from '../../lib/types.ts'
 import type { Nav, Tab } from '../../pages/AnalysisPage.tsx'
 import { fmtMs } from '../../lib/analyze.ts'
 import { Bar, KindChip, Kpi, SEVERITY_META, SectionTitle, msClass } from '../ui.tsx'
 import { Code } from '../SyntaxText.tsx'
+import { usePersisted } from '../../lib/docState.ts'
 
 export function Overview({ result, nav, goTab }: { result: TraceResult; nav: Nav; goTab: (t: Tab) => void }) {
   const { parsed, analysis } = result
   const t = analysis.totals
-  const [showAllFindings, setShowAllFindings] = useState(false)
+  const [showAllFindings, setShowAllFindings] = usePersisted('overview.allFindings', false)
   const findings = showAllFindings ? analysis.findings : analysis.findings.slice(0, 8)
   const maxMethod = analysis.methods[0]?.totalMs ?? 0
 

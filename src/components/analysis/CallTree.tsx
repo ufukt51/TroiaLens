@@ -5,6 +5,7 @@ import type { Cursor, Nav } from '../../pages/AnalysisPage.tsx'
 import { fmtMs } from '../../lib/analyze.ts'
 import { Bar, KindChip, VirtualList, msClass } from '../ui.tsx'
 import { Code } from '../SyntaxText.tsx'
+import { usePersisted } from '../../lib/docState.ts'
 
 type Row = { scope: true; id: number; depth: number } | { scope: false; id: number; depth: number }
 
@@ -17,13 +18,13 @@ export function CallTree({ parsed, nav, cursor }: { parsed: ParsedTrace; nav: Na
   const { scopes, statements } = parsed
   // Levels below the root: the deepest call's own rows are one more; small traces start fully open, larger ones with two
   const maxLevel = useMemo(() => scopes.reduce((m, s) => Math.max(m, s.depth + 1), 1), [scopes])
-  const [level, setLevel] = useState(() => (scopes.length < 60 ? maxLevel : Math.min(2, maxLevel)))
-  const [expanded, setExpanded] = useState<Set<number>>(() => openAbove(parsed, level))
-  const [showStmts, setShowStmts] = useState(true)
-  const [showGuides, setShowGuides] = useState(true)
-  const [query, setQuery] = useState('')
-  const [onlySql, setOnlySql] = useState(false)
-  const [minMs, setMinMs] = useState(0)
+  const [level, setLevel] = usePersisted('tree.level', () => (scopes.length < 60 ? maxLevel : Math.min(2, maxLevel)))
+  const [expanded, setExpanded] = usePersisted<Set<number>>('tree.open', () => openAbove(parsed, level))
+  const [showStmts, setShowStmts] = usePersisted('tree.stmts', true)
+  const [showGuides, setShowGuides] = usePersisted('tree.guides', true)
+  const [query, setQuery] = usePersisted('tree.query', '')
+  const [onlySql, setOnlySql] = usePersisted('tree.sql', false)
+  const [minMs, setMinMs] = usePersisted('tree.minMs', 0)
   const [scrollTo, setScrollTo] = useState<{ index: number; nonce: number } | null>(null)
   // Row to scroll to as soon as it is listed (its ancestors may still be opening)
   const pending = useRef<number | null>(null)
@@ -285,6 +286,7 @@ export function CallTree({ parsed, nav, cursor }: { parsed: ParsedTrace; nav: Na
             items={rows}
             rowHeight={ROW_H}
             scrollTo={scrollTo}
+            scrollKey="tree.y"
             render={(r) => {
               const pad = { paddingLeft: 8 + r.depth * 16 }
               const sel = cursor?.ref === rowRef(r)

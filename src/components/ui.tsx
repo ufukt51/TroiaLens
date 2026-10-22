@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode, type UIEvent } from 'react'
 import { Check, Copy, GripHorizontal, GripVertical } from 'lucide-react'
 import type { Severity, StmtKind } from '../lib/types.ts'
+import { useSavedScroll } from '../lib/docState.ts'
 
 export const KIND_META: Record<StmtKind, { label: string; cls: string }> = {
   sql: { label: 'SQL', cls: 'bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300' },
@@ -103,6 +104,7 @@ export function VirtualList<T>({
   overscan = 12,
   rowsOf,
   onRange,
+  scrollKey,
 }: {
   items: ArrayLike<T>
   rowHeight: number
@@ -114,9 +116,12 @@ export function VirtualList<T>({
   rowsOf?: (item: T, width: number) => number
   /** Items about to be drawn, from..to (exclusive) */
   onRange?: (from: number, to: number) => void
+  /** Notepad++: the scroll position is kept under this key while the user is on another document */
+  scrollKey?: string
 }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const [scrollTop, setScrollTop] = useState(0)
+  const saved = useSavedScroll<HTMLDivElement>(scrollKey)
+  const ref = saved.ref
+  const [scrollTop, setScrollTop] = useState(saved.saved)
   const [height, setHeight] = useState(600)
   const [width, setWidth] = useState(0)
 
@@ -184,7 +189,11 @@ export function VirtualList<T>({
     )
   }
   return (
-    <div ref={ref} className={`scroll-thin relative overflow-auto ${className}`} onScroll={(e: UIEvent<HTMLDivElement>) => setScrollTop(e.currentTarget.scrollTop)}>
+    <div ref={ref} className={`scroll-thin relative overflow-auto ${className}`} onScroll={(e: UIEvent<HTMLDivElement>) => {
+        setScrollTop(e.currentTarget.scrollTop)
+        saved.onScroll(e)
+      }}
+    >
       <div style={{ height: box, position: 'relative', minWidth: '100%' }}>{rows}</div>
     </div>
   )

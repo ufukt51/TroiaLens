@@ -4,6 +4,7 @@ import type { LoadedTrace } from '../lib/types.ts'
 import { parseFileName } from '../lib/run.ts'
 import { fmtMs } from '../lib/analyze.ts'
 import { onHostMessage, postToHost } from '../lib/host.ts'
+import { useDocStore, usePersisted, useSavedScroll } from '../lib/docState.ts'
 import { markFor, refAtLine, type Mark } from '../lib/locate.ts'
 import { Overview } from '../components/analysis/Overview.tsx'
 import { CallTree } from '../components/analysis/CallTree.tsx'
@@ -67,13 +68,14 @@ export function AnalysisPage({
   detailSlideOver?: boolean
 }) {
   const { parsed, analysis } = trace.result
-  const [tab, setTab] = useState<Tab>('overview')
-  const [detail, setDetail] = useState<number | null>(null)
+  // In Notepad++ these survive a switch to another document and back (see docState)
+  const [tab, setTab] = usePersisted<Tab>('tab', 'overview')
+  const [detail, setDetail] = usePersisted<number | null>('detail', null)
   const [slideOver, setSlideOver] = useState(() => detailSlideOver ?? savedSlideOver())
   useEffect(() => {
     if (detailSlideOver !== undefined) setSlideOver(detailSlideOver)
   }, [detailSlideOver])
-  const [cursor, setCursor] = useState<Cursor | null>(null)
+  const [cursor, setCursor] = usePersisted<Cursor | null>('cursor', null)
   const [issuesOpened, setIssuesOpened] = useState(false)
   if (tab === 'issues' && !issuesOpened) setIssuesOpened(true)
   const [rawTarget, setRawTarget] = useState<{ line: number; nonce: number } | null>(null)
@@ -87,13 +89,30 @@ export function AnalysisPage({
   // The browser reads lines from the file as views need them; Notepad++ shows them itself
   const source = embedded ? null : trace.source
 
+  // Notepad++: the editor's marks are kept too, so coming back to the document draws them again
+  const store = useDocStore()
+  const markEditor = useCallback(
+    (m: Mark | null) => {
+      postToHost(m ? { type: 'mark', ...m } : { type: 'clearMarks' })
+      if (!store) return
+      if (m) store.values.set('mark', m)
+      else store.values.delete('mark')
+    },
+    [store],
+  )
+  useEffect(() => {
+    const m = store?.values.get('mark') as Mark | undefined
+    if (embedded && m) postToHost({ type: 'mark', ...m })
+    // Once, for the restored document
+  }, [])
+
   const nav: Nav = useMemo(() => {
     // In Notepad++ the editor is the source view: move its caret to the row and mark the row's method there
     const follow = (ref: number) => {
       if (!embedded) return
       const m = markFor(parsed, ref)
       postToHost({ type: 'gotoLine', line: m.line, focus: false })
-      postToHost({ type: 'mark', ...m })
+      markEditor(m)
     }
     return {
       select: (id) => {
@@ -113,7 +132,7 @@ export function AnalysisPage({
       },
       unpick: () => {
         setCursor(null)
-        if (embedded) postToHost({ type: 'clearMarks' })
+        if (embedded) markEditor(null)
       },
       revealInTree: (ref) => {
         setCursor({ ref, nonce: Date.now(), open: true })
@@ -131,11 +150,11 @@ export function AnalysisPage({
       showInEditor: (m) => {
         if (!embedded) return
         postToHost({ type: 'gotoLine', line: m.line, focus: false })
-        postToHost({ type: 'mark', ...m })
+        markEditor(m)
       },
       stmtAtLine: (line) => lineIndex.get(line) ?? -1,
     }
-  }, [lineIndex, parsed, embedded])
+  }, [lineIndex, parsed, embedded, markEditor, setCursor, setDetail, setTab])
 
   // Notepad++: moving the editor caret selects the matching row while the call tree is open
   const tabRef = useRef(tab)
@@ -151,14 +170,14 @@ export function AnalysisPage({
         if (ref === null) return
         setCursor((c) => (c?.ref === ref ? c : { ref, nonce: Date.now() }))
         if (ref >= 0) setDetail((d) => (d === null ? d : ref))
-        postToHost({ type: 'mark', ...markFor(parsed, ref) })
+        markEditor(markFor(parsed, ref))
       }, 60)
     })
     return () => {
       off()
       clearTimeout(timer)
     }
-  }, [embedded, parsed])
+  }, [embedded, parsed, markEditor, setCursor, setDetail])
 
   const fromName = parseFileName(trace.name)
   const info = analysis.info
@@ -191,6 +210,8 @@ export function AnalysisPage({
       }
   }
   const fills = tab === 'tree' || tab === 'issues' || tab === 'raw'
+  // Each scrolling tab keeps its own place (the tree and issue list keep theirs inside)
+  const main = useSavedScroll<HTMLDivElement>(fills ? undefined : `y.${tab}`)
 
   return (
     <div className={`flex h-full flex-col ${embedded ? '' : 'mx-auto w-full max-w-[1600px]'}`}>
@@ -250,7 +271,11 @@ export function AnalysisPage({
         ))}
       </div>
 
-      <div className={`min-h-0 min-w-0 flex-1 ${embedded ? 'p-3' : 'p-4'} ${fills ? 'flex flex-col' : 'scroll-thin overflow-y-auto'}`}>
+      <div
+        ref={main.ref}
+        onScroll={main.onScroll}
+        className={`min-h-0 min-w-0 flex-1 ${embedded ? 'p-3' : 'p-4'} ${fills ? 'flex flex-col' : 'scroll-thin overflow-y-auto'}`}
+      >
         {tab === 'overview' && <Overview result={trace.result} nav={nav} goTab={setTab} />}
         {tab === 'tree' && (
           <div className="flex min-h-0 flex-1 gap-4">

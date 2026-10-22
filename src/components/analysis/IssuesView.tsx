@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { ChevronDown, ChevronRight, ChevronUp, CircleAlert, GitBranch, Search } from 'lucide-react'
 import type { IssueKind, ParsedTrace, TraceResult } from '../../lib/types.ts'
 import type { Nav } from '../../pages/AnalysisPage.tsx'
@@ -6,6 +6,7 @@ import type { LineSource } from '../../lib/source.ts'
 import { issueText } from '../../lib/analyze.ts'
 import { editorLine, markFor, refAtLine, type Mark } from '../../lib/locate.ts'
 import { Empty } from '../ui.tsx'
+import { usePersisted, useSavedScroll } from '../../lib/docState.ts'
 import { SourcePane } from './SourcePane.tsx'
 
 /** One place to go to: a trace issue, or an error / warning MESSAGE statement */
@@ -87,12 +88,13 @@ function matches(parsed: ParsedTrace, e: Entry, q: string): boolean {
 export function IssuesView({ result, nav, source, embedded }: { result: TraceResult; nav: Nav; source: LineSource | null; embedded: boolean }) {
   const { parsed, analysis } = result
   const all = useMemo(() => collect(parsed, analysis.messages), [parsed, analysis.messages])
-  const [filter, setFilter] = useState<Filter>('all')
-  const [query, setQuery] = useState('')
-  const [active, setActive] = useState<string | null>(null)
-  const [open, setOpen] = useState<Set<string>>(() => new Set())
+  const [filter, setFilter] = usePersisted<Filter>('issues.filter', 'all')
+  const [query, setQuery] = usePersisted('issues.query', '')
+  const [active, setActive] = usePersisted<string | null>('issues.active', null)
+  const [open, setOpen] = usePersisted<Set<string>>('issues.open', () => new Set())
   const [pane, setPane] = useState<{ mark: Mark; nonce: number } | null>(null)
-  const listRef = useRef<HTMLDivElement>(null)
+  const scroll = useSavedScroll<HTMLDivElement>('issues.y')
+  const listRef = scroll.ref
 
   const q = query.trim().toLowerCase()
   const shown = useMemo(() => all.filter((e) => (filter === 'all' || e.kind === filter) && matches(parsed, e, q)), [all, filter, q, parsed])
@@ -316,7 +318,7 @@ export function IssuesView({ result, nav, source, embedded }: { result: TraceRes
         </div>
       </div>
 
-      <div ref={listRef} tabIndex={0} onKeyDown={onKey} className="scroll-thin min-h-0 flex-1 space-y-4 overflow-y-auto outline-none">
+      <div ref={listRef} onScroll={scroll.onScroll} tabIndex={0} onKeyDown={onKey} className="scroll-thin min-h-0 flex-1 space-y-4 overflow-y-auto outline-none">
         {sections.map((s) => {
           const items = s.kind === 'missingParam' ? groups : shown.filter((e) => e.kind === s.kind)
           const total = s.kind === 'missingParam' ? groups.reduce((n, g) => n + g.entries.length, 0) : items.length

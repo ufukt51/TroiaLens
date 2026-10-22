@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "test": "node --experimental-strip-types scripts/parse-check.ts && node --experimental-strip-types scripts/syntax-check.ts"
+    "test": "node --experimental-strip-types scripts/parse-check.ts && node --experimental-strip-types scripts/syntax-check.ts && node --experimental-strip-types scripts/state-check.ts"
   },
   "dependencies": {
     "lucide-react": "^1.55.0",

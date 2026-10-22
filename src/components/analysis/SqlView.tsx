@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { ChevronDown, ChevronRight, Database, Search } from 'lucide-react'
 import type { SqlGroup, TraceResult } from '../../lib/types.ts'
 import type { Nav } from '../../pages/AnalysisPage.tsx'
 import { fmtMs } from '../../lib/analyze.ts'
 import { Bar, CodeBlock, Empty, Kpi, SectionTitle, formatSql, msClass } from '../ui.tsx'
 import { Code, PREVIEW } from '../SyntaxText.tsx'
+import { usePersisted } from '../../lib/docState.ts'
 
 type SortKey = 'totalMs' | 'count' | 'dbHits' | 'rows'
 
@@ -20,11 +21,11 @@ const verbCls = (verb: string) => VERB_CLS[verb] ?? 'bg-slate-100 text-slate-600
 export function SqlView({ result, nav }: { result: TraceResult; nav: Nav }) {
   const { parsed, analysis } = result
   const t = analysis.totals
-  const [query, setQuery] = useState('')
-  const [sort, setSort] = useState<SortKey>('totalMs')
-  const [open, setOpen] = useState<string | null>(null)
-  const [table, setTable] = useState<string | null>(null)
-  const [verb, setVerb] = useState<string | null>(null)
+  const [query, setQuery] = usePersisted('sql.query', '')
+  const [sort, setSort] = usePersisted<SortKey>('sql.sort', 'totalMs')
+  const [open, setOpen] = usePersisted<string | null>('sql.open', null)
+  const [table, setTable] = usePersisted<string | null>('sql.table', null)
+  const [verb, setVerb] = usePersisted<string | null>('sql.verb', null)
 
   const verbs = useMemo(() => {
     const m = new Map<string, number>()

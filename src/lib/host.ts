@@ -4,8 +4,16 @@ import type { Mark } from './locate.ts'
 
 export type HostMessage =
   | { type: 'load'; name: string; text: string }
-  | { type: 'loadUrl'; name: string; url: string }
-  | { type: 'notTrace'; name: string }
+  /**
+   * A trace document: doc is the Notepad++ buffer, gen the version of its text. The page shows its kept analysis
+   * of that version, or asks for the text with need.
+   */
+  | { type: 'show'; name: string; doc: string; gen: number }
+  /** The document's text to analyse (after need, or when the user asks for a fresh analysis) */
+  | { type: 'loadUrl'; name: string; url: string; doc?: string; gen?: number }
+  | { type: 'notTrace'; name: string; doc?: string }
+  /** The document was closed; its kept view state can go */
+  | { type: 'forget'; doc: string }
   | { type: 'empty' }
   | { type: 'theme'; dark: boolean }
   /** User preferences from the plugin menu */
@@ -34,6 +42,8 @@ export type PageMessage =
   | { type: 'reload' }
   /** The user changed a preference in the page; the plugin saves it and answers with prefs */
   | { type: 'setPrefs'; detailSlideOver: boolean }
+  /** No kept analysis of this version of the document: the plugin sends its text */
+  | { type: 'need'; doc: string; gen: number }
 
 export function postToHost(msg: PageMessage) {
   webview()?.postMessage(msg)
