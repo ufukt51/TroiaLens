@@ -1,4 +1,5 @@
 import type { DumpColumn, TraceDump } from './types.ts'
+import { toXlsx, type CellKind } from './xlsx.ts'
 
 /** Cells of a printed row, in header order */
 export function dumpCells(d: TraceDump, row: string): string[] {
@@ -52,6 +53,18 @@ export function toTsv(d: TraceDump, cols: number[], rows: string[][]): string {
   const lines = [cols.map((k) => clean(d.header[k])).join('\t')]
   for (const cells of rows) lines.push(cols.map((k) => clean(cells[k] ?? '')).join('\t'))
   return lines.join('\r\n')
+}
+
+/** Excel workbook: STRING cells stay text ("00" stays "00"), numbers and dates keep their type */
+export function toDumpXlsx(d: TraceDump, cols: number[], rows: string[][]): Promise<Uint8Array> {
+  const kind = (k: number): CellKind => {
+    const c = d.columns[k]
+    if (!c) return 'number' // row state cells: 0/1, true/false
+    if (isNumeric(c)) return 'number'
+    if (/^DATE(TIME)?$/i.test(c.type)) return 'date'
+    return 'text'
+  }
+  return toXlsx(d.name || 'dump', cols.map((k) => d.header[k]), cols.map(kind), rows.map((cells) => cols.map((k) => cells[k] ?? '')))
 }
 
 /** CSV with ';' between fields, as Excel opens it on Turkish Windows; no BOM, the writer adds it */

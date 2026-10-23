@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Check, ChevronLeft, ChevronRight, Copy, Download, FileText, GitBranch, Rows3, Search, Sheet, Table2 } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Check, ChevronLeft, ChevronRight, Copy, Download, FileSpreadsheet, FileText, GitBranch, Rows3, Search, Sheet, Table2 } from 'lucide-react'
 import type { ParsedTrace, TraceDump } from '../../lib/types.ts'
 import type { Nav } from '../../pages/AnalysisPage.tsx'
-import { cellCut, dumpCells, dumpRowNumber, isNumeric, rowState, toCsv, toTsv, typeLabel, type RowState } from '../../lib/dump.ts'
+import { cellCut, dumpCells, dumpRowNumber, isNumeric, rowState, toCsv, toDumpXlsx, toTsv, typeLabel, type RowState } from '../../lib/dump.ts'
 import { inHost, postToHost } from '../../lib/host.ts'
 import { editorLine } from '../../lib/locate.ts'
 import { usePersisted } from '../../lib/docState.ts'
@@ -25,6 +25,22 @@ function where(parsed: ParsedTrace, d: TraceDump): string {
   const st = parsed.statements[d.stmtId]
   const scope = parsed.scopes[st ? st.scopeId : d.scopeId]
   return st ? `${scope.label}:${st.srcLine}` : scope.label
+}
+
+/** Browser download, outside the plugin */
+function download(name: string, blob: Blob) {
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = name
+  a.click()
+  setTimeout(() => URL.revokeObjectURL(url), 0)
+}
+
+function base64(data: Uint8Array): string {
+  let s = ''
+  for (let i = 0; i < data.length; i += 0x8000) s += String.fromCharCode(...data.subarray(i, i + 0x8000))
+  return btoa(s)
 }
 
 /** Tables printed by DUMP, shown as tables */
@@ -147,19 +163,20 @@ function DumpTable({
     setCopied(true)
   }
 
+  const fileName = (ext: string) => `${d.name || 'dump'}_${where(parsed, d)}.${ext}`.replace(/[\\/:*?"<>|\s]+/g, '_')
+
   const exportCsv = () => {
-    const name = `${d.name || 'dump'}_${where(parsed, d)}.csv`.replace(/[\\/:*?"<>|\s]+/g, '_')
+    const name = fileName('csv')
     const text = toCsv(d, cols, rows.map((i) => cells[i]))
-    if (inHost()) {
-      postToHost({ type: 'saveCsv', name, text })
-    } else {
-      const url = URL.createObjectURL(new Blob(['﻿' + text], { type: 'text/csv;charset=utf-8' }))
-      const a = document.createElement('a')
-      a.href = url
-      a.download = name
-      a.click()
-      setTimeout(() => URL.revokeObjectURL(url), 0)
-    }
+    if (inHost()) postToHost({ type: 'saveCsv', name, text })
+    else download(name, new Blob(['﻿' + text], { type: 'text/csv;charset=utf-8' }))
+  }
+
+  const exportXlsx = async () => {
+    const name = fileName('xlsx')
+    const data = await toDumpXlsx(d, cols, rows.map((i) => cells[i]))
+    if (inHost()) postToHost({ type: 'saveXlsx', name, data: base64(data) })
+    else download(name, new Blob([data as BlobPart], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }))
   }
 
   const activeCol = d.activeCol.toUpperCase()
@@ -200,6 +217,14 @@ function DumpTable({
           >
             <Download className="h-3.5 w-3.5" />
             CSV
+          </button>
+          <button
+            className="btn-outline px-2.5 py-1 text-xs"
+            onClick={exportXlsx}
+            title={`Aramaya uyan satırları görünen kolonlarla Excel dosyası olarak ${inHost() ? 'kaydeder ve açar' : 'indirir'}; metin kolonları metin kalır`}
+          >
+            <FileSpreadsheet className="h-3.5 w-3.5" />
+            Excel
           </button>
           {st && (
             <button className="btn-ghost px-2 py-1 font-mono text-xs" onClick={() => nav.revealInTree(st.id)} title="Ağaçta göster">
@@ -363,9 +388,19 @@ function DumpTable({
           <button className="btn-ghost p-1" onClick={() => setRecord((r) => Math.max(0, r - 1))} disabled={record === 0} aria-label="Önceki satır">
             <ChevronLeft className="h-4 w-4" />
           </button>
-          <span className="tabular-nums text-slate-600 dark:text-slate-300">
-            Satır {numbers[record]} / {d.rows.length}
-            {numbers[record] === d.activeRow && <span className="ml-1.5 chip bg-brand-100 text-brand-800 dark:bg-brand-500/15 dark:text-brand-300">aktif</span>}
+          <span className="flex items-center gap-1.5 tabular-nums text-slate-600 dark:text-slate-300">
+            Satır
+            <RowInput
+              value={numbers[record]}
+              max={d.rows.length}
+              onGo={(n) => {
+                // The printed row number; its position when the rows are numbered without gaps
+                const i = numbers.indexOf(n)
+                setRecord(i >= 0 ? i : Math.max(0, Math.min(d.rows.length - 1, n - 1)))
+              }}
+            />
+            / {d.rows.length}
+            {numbers[record] === d.activeRow && <span className="chip bg-brand-100 text-brand-800 dark:bg-brand-500/15 dark:text-brand-300">aktif</span>}
           </span>
           <button className="btn-ghost p-1" onClick={() => setRecord((r) => Math.min(d.rows.length - 1, r + 1))} disabled={record >= d.rows.length - 1} aria-label="Sonraki satır">
             <ChevronRight className="h-4 w-4" />
@@ -373,6 +408,39 @@ function DumpTable({
         </div>
       )}
     </div>
+  )
+}
+
+/** The shown row number; typing another and pressing Enter (or leaving the box) goes to it, Escape gives up */
+function RowInput({ value, max, onGo }: { value: number; max: number; onGo: (n: number) => void }) {
+  const [draft, setDraft] = useState<string | null>(null)
+  // Escape blurs the box; the blur must not go to the typed row
+  const cancelled = useRef(false)
+  const go = () => {
+    const n = parseInt(draft ?? '', 10)
+    if (n > 0 && !cancelled.current) onGo(Math.min(n, max))
+    cancelled.current = false
+    setDraft(null)
+  }
+  return (
+    <input
+      className="input w-auto px-1.5 py-0.5 text-center text-xs tabular-nums"
+      style={{ width: `${String(max).length + 2.5}ch` }}
+      inputMode="numeric"
+      aria-label="Satır numarası"
+      title="Satır numarasını yazıp Enter'a basın"
+      value={draft ?? String(value)}
+      onFocus={(e) => e.target.select()}
+      onChange={(e) => setDraft(e.target.value.replace(/\D/g, ''))}
+      onBlur={go}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') go()
+        else if (e.key === 'Escape') {
+          cancelled.current = true
+          e.currentTarget.blur()
+        }
+      }}
+    />
   )
 }
 

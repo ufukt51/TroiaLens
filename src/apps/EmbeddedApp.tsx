@@ -50,6 +50,7 @@ const tabOnly = (values: Map<string, unknown>) => new Map([...values].filter(([k
 export function EmbeddedApp() {
   const [view, setView] = useState<View>({ kind: 'waiting' })
   const [slideOver, setSlideOver] = useState(false)
+  const [rowHighlight, setRowHighlight] = useState(true)
   // Every load gets a ticket; results of an older load are dropped when the user switches tabs quickly
   const ticket = useRef(0)
   // Most recently shown last
@@ -126,6 +127,7 @@ export function EmbeddedApp() {
           break
         case 'prefs':
           setSlideOver(msg.detailSlideOver)
+          setRowHighlight(msg.rowHighlight ?? true)
           break
         case 'show': {
           // A load still running for another document is dropped either way
@@ -169,7 +171,7 @@ export function EmbeddedApp() {
       return (
         <div className="h-dvh">
           <DocStateContext.Provider value={view.store}>
-            <AnalysisPage key={view.trace.id} trace={view.trace} embedded detailSlideOver={slideOver} />
+            <AnalysisPage key={view.trace.id} trace={view.trace} embedded detailSlideOver={slideOver} rowHighlight={rowHighlight} />
           </DocStateContext.Provider>
         </div>
       )

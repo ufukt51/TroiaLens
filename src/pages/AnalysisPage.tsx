@@ -64,11 +64,14 @@ export function AnalysisPage({
   trace,
   embedded,
   detailSlideOver,
+  rowHighlight,
 }: {
   trace: LoadedTrace
   embedded: boolean
   /** Statement detail slides over from the right instead of docking under the views (Notepad++ setting) */
   detailSlideOver?: boolean
+  /** The editor tints the selected row's lines (Notepad++ setting) */
+  rowHighlight?: boolean
 }) {
   const { parsed, analysis } = trace.result
   // In Notepad++ these survive a switch to another document and back (see docState)
@@ -78,6 +81,10 @@ export function AnalysisPage({
   useEffect(() => {
     if (detailSlideOver !== undefined) setSlideOver(detailSlideOver)
   }, [detailSlideOver])
+  const [tint, setTint] = useState(rowHighlight ?? true)
+  useEffect(() => {
+    if (rowHighlight !== undefined) setTint(rowHighlight)
+  }, [rowHighlight])
   const [cursor, setCursor] = usePersisted<Cursor | null>('cursor', null)
   const [dump, setDump] = usePersisted('dump', 0)
   const [issuesOpened, setIssuesOpened] = useState(false)
@@ -219,6 +226,11 @@ export function AnalysisPage({
         // Not remembered then
       }
   }
+  // Only Notepad++ tints the editor; the plugin saves the choice and ticks its menu item
+  const toggleTint = (on: boolean) => {
+    setTint(on)
+    postToHost({ type: 'setPrefs', rowHighlight: on })
+  }
   const fills = tab === 'tree' || tab === 'issues' || tab === 'dumps' || tab === 'raw'
   // Each scrolling tab keeps its own place (the tree and issue list keep theirs inside)
   const main = useSavedScroll<HTMLDivElement>(fills ? undefined : `y.${tab}`)
@@ -289,7 +301,7 @@ export function AnalysisPage({
         {tab === 'overview' && <Overview result={trace.result} nav={nav} goTab={setTab} />}
         {tab === 'tree' && (
           <div className="flex min-h-0 flex-1 gap-4">
-            <CallTree parsed={parsed} nav={nav} cursor={cursor} />
+            <CallTree parsed={parsed} nav={nav} cursor={cursor} rowHighlight={embedded ? tint : undefined} onRowHighlight={toggleTint} />
             {source && cursor && (
               <SourcePane
                 source={source}

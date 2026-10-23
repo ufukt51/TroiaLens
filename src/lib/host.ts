@@ -17,7 +17,7 @@ export type HostMessage =
   | { type: 'empty' }
   | { type: 'theme'; dark: boolean }
   /** User preferences from the plugin menu */
-  | { type: 'prefs'; detailSlideOver: boolean }
+  | { type: 'prefs'; detailSlideOver: boolean; rowHighlight?: boolean }
   /** The editor caret moved to another line of the analysed document */
   | { type: 'caret'; line: number }
 
@@ -41,11 +41,13 @@ export type PageMessage =
   | { type: 'clearMarks' }
   | { type: 'reload' }
   /** The user changed a preference in the page; the plugin saves it and answers with prefs */
-  | { type: 'setPrefs'; detailSlideOver: boolean }
+  | { type: 'setPrefs'; detailSlideOver?: boolean; rowHighlight?: boolean }
   /** No kept analysis of this version of the document: the plugin sends its text */
   | { type: 'need'; doc: string; gen: number }
   /** The plugin writes the file under %TEMP%\TroiaLens and opens it with its default program */
   | { type: 'saveCsv'; name: string; text: string }
+  /** The same for an Excel workbook; data is the file in base64 */
+  | { type: 'saveXlsx'; name: string; data: string }
 
 export function postToHost(msg: PageMessage) {
   webview()?.postMessage(msg)

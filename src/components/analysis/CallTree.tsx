@@ -14,7 +14,20 @@ const PAGE = 15
 
 const rowRef = (r: Row) => (r.scope ? ~r.id : r.id)
 
-export function CallTree({ parsed, nav, cursor }: { parsed: ParsedTrace; nav: Nav; cursor: Cursor | null }) {
+export function CallTree({
+  parsed,
+  nav,
+  cursor,
+  rowHighlight,
+  onRowHighlight,
+}: {
+  parsed: ParsedTrace
+  nav: Nav
+  cursor: Cursor | null
+  /** The editor's tint of the selected row's lines; undefined outside Notepad++, where there is no editor */
+  rowHighlight?: boolean
+  onRowHighlight?: (on: boolean) => void
+}) {
   const { scopes, statements } = parsed
   // Levels below the root: the deepest call's own rows are one more; small traces start fully open, larger ones with two
   const maxLevel = useMemo(() => scopes.reduce((m, s) => Math.max(m, s.depth + 1), 1), [scopes])
@@ -217,6 +230,14 @@ export function CallTree({ parsed, nav, cursor }: { parsed: ParsedTrace; nav: Na
         <label className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
           <input type="checkbox" checked={showGuides} onChange={(e) => setShowGuides(e.target.checked)} /> Çizgiler
         </label>
+        {rowHighlight !== undefined && (
+          <label
+            className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400"
+            title="Seçili satırın kod bloğunu editörde açık sarıya boyar (eklenti menüsündeki ayarla aynı)"
+          >
+            <input type="checkbox" checked={rowHighlight} onChange={(e) => onRowHighlight?.(e.target.checked)} /> Blok rengi
+          </label>
+        )}
         <label className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
           <input type="checkbox" checked={onlySql} onChange={(e) => setOnlySql(e.target.checked)} /> Sadece SQL
         </label>
