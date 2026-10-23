@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type DragEvent } from 'react'
 import { ArrowRight, ClipboardPaste, Database, FileText, GitBranch, Lightbulb, Loader2, Lock, Repeat, X } from 'lucide-react'
 import { listHistory, loadHistoryText, type HistoryEntry } from '../lib/storage.ts'
 import { Logo } from '../components/Header.tsx'
+import { PluginCard } from '../components/PluginCard.tsx'
 
 interface Props {
   onLoad: (name: string, file: Blob, opts?: { remember?: boolean }) => void
@@ -154,6 +155,8 @@ export function Home({ onLoad, busy, error, onDismissError, navigate }: Props) {
           </div>
         </div>
       )}
+
+      {!busy && <PluginCard />}
 
       <div className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {FEATURES.map(({ icon: Icon, title, text }) => (
