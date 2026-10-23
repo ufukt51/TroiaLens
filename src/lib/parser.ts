@@ -1,4 +1,4 @@
-import type { CrossRef, MessageInfo, ParsedTrace, Scope, SqlInfo, Statement, StmtKind, TraceIssue, TraceMeta } from './types.ts'
+import type { CrossRef, MessageInfo, ParsedTrace, Scope, SqlInfo, Statement, StmtKind, TraceDump, TraceIssue, TraceMeta } from './types.ts'
 
 const CLOSE = '▏' // ▏ scope end marker (▎ opens a scope)
 
@@ -14,6 +14,9 @@ const ISSUE_RE = /^(Errors?|Warnings?)\s*:\s?(.*)$/
 const MISSING_RE = /^(.*?)\s*<=\s*\?\?\?\s*!!Missing Parameter!!/i
 /** "SET command could not find control:X" is printed before the SET statement it belongs to */
 const COMMAND_RE = /^(\w+)\s+command\b/i
+/** DUMP prints the table after its statement: "OBJECT DUMP { Name: X, ..." up to a "] }" line */
+const DUMP_RE = /^OBJECT DUMP\s*\{\s*(.*)$/
+const DUMP_END_RE = /^\]\s*\}/
 
 // UPDATE / DELETE source may break right after the verb or table name; the rest follows on tab lines
 const SQL_RE =
@@ -174,6 +177,32 @@ interface Block {
   stmtId: number
 }
 
+interface OpenDump {
+  dump: TraceDump
+  /** Where in the dump the next line is: before or between the lists, column list, row header, rows */
+  part: 'head' | 'columns' | 'header' | 'rows'
+}
+
+/**
+ * Cells are printed in fixed width columns after the row number ("1.", "10."), which the header line leaves
+ * blank: the header gives both widths and the cell names.
+ */
+function dumpLayout(d: TraceDump, header: string) {
+  const end = header.trimEnd().length
+  const prefix = header.length - header.trimStart().length
+  let width = 0
+  let prev = -1
+  // Names longer than a cell run into the next one; the closest two starts are one cell apart
+  for (const m of header.matchAll(/\S+/g)) {
+    if (prev >= 0 && (!width || m.index - prev < width)) width = m.index - prev
+    prev = m.index
+  }
+  if (!width) width = Math.max(1, end - prefix)
+  d.prefix = prefix
+  d.width = width
+  for (let k = 0; prefix + k * width < end; k++) d.header.push(d.columns[k]?.name ?? own(header.slice(prefix + k * width, prefix + (k + 1) * width).trim()))
+}
+
 interface OpenScope {
   scope: Scope
   blocks: Block[]
@@ -187,6 +216,9 @@ export const SQL_CAP = 16000
 const LINE_CAP = 65536
 /** Header lines kept while looking for the line that ends the header */
 const HEAD_LIMIT = 50000
+/** Rows kept of one dump, and characters of rows kept over all of them */
+const DUMP_ROWS = 10000
+const DUMP_CHARS = 32 * 1024 * 1024
 
 /** Copy of a string that does not keep the (possibly huge) line it was cut from alive */
 function own(s: string): string {
@@ -217,6 +249,9 @@ export class TraceParser {
   private readonly scopes: Scope[] = []
   private readonly statements: Statement[] = []
   private readonly issues: TraceIssue[] = []
+  private readonly dumps: TraceDump[] = []
+  private dump: OpenDump | null = null
+  private dumpChars = 0
   private stack: OpenScope[] = []
   /** Blocks of already closed scopes whose "BLOCK ENDED" lines are still to come (RETURN unwinding) */
   private debt = 0
@@ -261,6 +296,7 @@ export class TraceParser {
 
   finish(): ParsedTrace {
     if (this.head) this.startBody(this.headStmt >= 0 ? this.headStmt : this.head.length)
+    if (this.dump) this.endDump(this.n)
     if (this.last) this.seal(this.last)
     const { scopes, statements, stack } = this
     const lineCount = this.n
@@ -292,7 +328,7 @@ export class TraceParser {
     if (statements.length === 0) warnings.push('Dosyada trace satırı bulunamadı. Bu bir Troia trace dosyası mı?')
     if (this.implicitCount > 0) warnings.push(`${this.implicitCount} scope, başlangıç satırı olmadan bulundu (trace bir çağrının ortasında başlamış olabilir).`)
 
-    return { meta: this.meta, scopes, statements, issues: this.issues, lineCount, bodyStartLine: this.bodyStart + 1, crBreaks: this.crBreaks, warnings }
+    return { meta: this.meta, scopes, statements, issues: this.issues, dumps: this.dumps, lineCount, bodyStartLine: this.bodyStart + 1, crBreaks: this.crBreaks, warnings }
   }
 
   private startBody(start: number) {
@@ -388,9 +424,87 @@ export class TraceParser {
     }
   }
 
+  private startDump(line: string, fileLine: number) {
+    const fields = new Map<string, string>()
+    for (const part of line.replace(DUMP_RE, '$1').split(',')) {
+      const c = part.indexOf(':')
+      if (c > 0) fields.set(part.slice(0, c).trim().toUpperCase(), part.slice(c + 1).trim())
+    }
+    const num = (key: string) => parseInt(fields.get(key) ?? '', 10) || 0
+    const dump: TraceDump = {
+      name: own(fields.get('NAME') ?? ''),
+      dbName: own(fields.get('DB NAME') ?? ''),
+      fileLine,
+      lineEnd: fileLine,
+      scopeId: this.top().scope.id,
+      stmtId: this.last ? this.last.id : -1,
+      rowCount: num('ROWCOUNT'),
+      activeRow: num('ACTIVEROW'),
+      activeCol: own(fields.get('ACTIVECOLNAME') ?? ''),
+      columns: [],
+      header: [],
+      rows: [],
+      prefix: 0,
+      width: 1,
+    }
+    this.dumps.push(dump)
+    this.dump = { dump, part: 'head' }
+  }
+
+  private endDump(lineEnd: number) {
+    const d = this.dump!.dump
+    this.dump = null
+    d.lineEnd = lineEnd
+    // The DUMP statement's lines take the table in, so marking its row marks the table too
+    const st = d.stmtId >= 0 ? this.statements[d.stmtId] : null
+    if (st) st.span = Math.max(st.span, lineEnd - st.fileLine)
+  }
+
+  /** A line inside a dump; false if the dump ended without its "] }" and the line is not part of it */
+  private dumpLine(line: string, fileLine: number): boolean {
+    const o = this.dump!
+    const d = o.dump
+    if (STMT_RE.test(line) || SCOPE_RE.test(line)) {
+      this.endDump(fileLine - 1)
+      return false
+    }
+    const marks = countMarks(line)
+    const t = line.replace(/▏/g, '').trim()
+    if (DUMP_END_RE.test(t)) this.endDump(fileLine)
+    else if (o.part === 'head') {
+      if (/^\[Column info/i.test(t)) o.part = 'columns'
+      else if (/^\[\s*ROWS\s*:/i.test(t)) o.part = 'header'
+    } else if (o.part === 'columns') {
+      // "Index, Name, Type, Length, Scale, Writable, Deleted"
+      const c = t.split(',').map((x) => x.trim())
+      if (t === ']') o.part = 'head'
+      else if (c.length >= 7)
+        d.columns.push({ index: +c[0], name: own(c[1]), type: own(c[2]), length: +c[3], scale: +c[4], writable: c[5] === 'true', deleted: c[6] === 'true' })
+    } else if (o.part === 'header') {
+      dumpLayout(d, line.replace(/▏/g, ''))
+      o.part = 'rows'
+    } else if (/^\s*\d+\.\s*$/.test(line.slice(0, d.prefix)) || !d.rows.length) {
+      if (d.rows.length < DUMP_ROWS && this.dumpChars + line.length <= DUMP_CHARS) {
+        d.rows.push(own(line))
+        this.dumpChars += line.length
+      } else d.cut = true
+    } else if (!d.cut) {
+      // A value with a line break in it goes on over the next line; one character keeps the cells in place
+      d.rows[d.rows.length - 1] = own(d.rows[d.rows.length - 1] + '↵' + line)
+    }
+    for (let k = 0; k < marks; k++) this.popScope(fileLine)
+    return true
+  }
+
   private body(line: string, i: number) {
     const fileLine = i + 1
     if (!line.trim()) return
+    if (this.dump) {
+      if (this.dumpLine(line, fileLine)) return
+    } else if (DUMP_RE.test(line)) {
+      this.startDump(line, fileLine)
+      return
+    }
     const openIssue: TraceIssue | null = this.bulletsFor
     this.bulletsFor = null
     const last = this.last

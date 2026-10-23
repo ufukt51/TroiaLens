@@ -206,7 +206,7 @@ export function ScoreDot({ score, size = 'sm' }: { score: number; size?: 'sm' | 
   return <div className={`flex shrink-0 items-center justify-center rounded-full font-semibold text-white ${color} ${dims}`}>{score}</div>
 }
 
-async function copyText(text: string) {
+export async function copyText(text: string) {
   try {
     await navigator.clipboard.writeText(text)
     return

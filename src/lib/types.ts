@@ -116,12 +116,51 @@ export interface TraceIssue {
   details: string[]
 }
 
+export interface DumpColumn {
+  index: number
+  name: string
+  type: string
+  length: number
+  scale: number
+  writable: boolean
+  deleted: boolean
+}
+
+/** A table printed by DUMP ("OBJECT DUMP { ... }") */
+export interface TraceDump {
+  name: string
+  dbName: string
+  /** Trace line of "OBJECT DUMP {" and of the "] }" that ends it */
+  fileLine: number
+  lineEnd: number
+  scopeId: number
+  /** The DUMP statement, -1 if none */
+  stmtId: number
+  rowCount: number
+  /** 1-based, 0 if none */
+  activeRow: number
+  activeCol: string
+  columns: DumpColumn[]
+  /** Cell names: the table's columns, then the row state ones (INSERTED, DELETED...) */
+  header: string[]
+  /** Row lines as printed, each made of fixed width cells (see lib/dump.ts) */
+  rows: string[]
+  /** Characters the row number takes before the first cell */
+  prefix: number
+  /** Width of a cell; longer values are cut to it */
+  width: number
+  /** Rows past the cap were left out */
+  cut?: boolean
+}
+
 export interface ParsedTrace {
   meta: TraceMeta
   scopes: Scope[]
   statements: Statement[]
   /** In file order */
   issues: TraceIssue[]
+  /** In file order */
+  dumps: TraceDump[]
   lineCount: number
   bodyStartLine: number
   /** Trace line of every bare CR, ascending. Editors (Notepad++) break lines there too; see editorLine */

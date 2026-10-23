@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { CircleAlert, Database, FileText, GitBranch, LayoutDashboard, MessageSquare, Repeat } from 'lucide-react'
+import { CircleAlert, Database, FileText, GitBranch, LayoutDashboard, MessageSquare, Repeat, Sheet } from 'lucide-react'
 import type { LoadedTrace } from '../lib/types.ts'
 import { parseFileName } from '../lib/run.ts'
 import { fmtMs } from '../lib/analyze.ts'
@@ -13,6 +13,7 @@ import { RepeatsView } from '../components/analysis/RepeatsView.tsx'
 import { MessagesView } from '../components/analysis/MessagesView.tsx'
 import { IssuesView } from '../components/analysis/IssuesView.tsx'
 import { RawView } from '../components/analysis/RawView.tsx'
+import { DumpsView } from '../components/analysis/DumpsView.tsx'
 import { StatementDetail } from '../components/analysis/StatementDetail.tsx'
 import { SourcePane } from '../components/analysis/SourcePane.tsx'
 
@@ -26,7 +27,7 @@ function savedSlideOver(): boolean {
   }
 }
 
-export type Tab = 'overview' | 'tree' | 'sql' | 'repeats' | 'messages' | 'issues' | 'raw'
+export type Tab = 'overview' | 'tree' | 'sql' | 'repeats' | 'messages' | 'issues' | 'dumps' | 'raw'
 
 /** Selected call tree row: >= 0 statement, < 0 scope encoded as ~id. A new nonce scrolls the tree to it. */
 export interface Cursor {
@@ -51,6 +52,8 @@ export interface Nav {
   showInEditor: (m: Mark) => void
   /** Finds the statement printed at a file line, if any */
   stmtAtLine: (fileLine: number) => number
+  /** Switches to the dumps tab showing parsed.dumps[index] */
+  openDump: (index: number) => void
 }
 
 /**
@@ -76,6 +79,7 @@ export function AnalysisPage({
     if (detailSlideOver !== undefined) setSlideOver(detailSlideOver)
   }, [detailSlideOver])
   const [cursor, setCursor] = usePersisted<Cursor | null>('cursor', null)
+  const [dump, setDump] = usePersisted('dump', 0)
   const [issuesOpened, setIssuesOpened] = useState(false)
   if (tab === 'issues' && !issuesOpened) setIssuesOpened(true)
   const [rawTarget, setRawTarget] = useState<{ line: number; nonce: number } | null>(null)
@@ -153,8 +157,12 @@ export function AnalysisPage({
         markEditor(m)
       },
       stmtAtLine: (line) => lineIndex.get(line) ?? -1,
+      openDump: (index) => {
+        setDump(index)
+        setTab('dumps')
+      },
     }
-  }, [lineIndex, parsed, embedded, markEditor, setCursor, setDetail, setTab])
+  }, [lineIndex, parsed, embedded, markEditor, setCursor, setDetail, setTab, setDump])
 
   // Notepad++: moving the editor caret selects the matching row while the call tree is open
   const tabRef = useRef(tab)
@@ -194,6 +202,8 @@ export function AnalysisPage({
     { id: 'messages', label: 'Mesajlar', icon: MessageSquare, count: t.messages },
     { id: 'issues', label: 'Hata/Uyarı', icon: CircleAlert, count: t.traceErrors + t.traceWarnings + t.missingParams + t.errors + t.warnings, alert: t.traceErrors + t.errors > 0 },
   ]
+  // Most traces have none; the tab comes only with them
+  if (parsed.dumps.length) tabs.push({ id: 'dumps', label: embedded ? 'Dump' : 'Dump tabloları', icon: Sheet, count: parsed.dumps.length })
   if (source) tabs.push({ id: 'raw', label: 'Ham dosya', icon: FileText })
 
   const close = useCallback(() => setDetail(null), [])
@@ -209,7 +219,7 @@ export function AnalysisPage({
         // Not remembered then
       }
   }
-  const fills = tab === 'tree' || tab === 'issues' || tab === 'raw'
+  const fills = tab === 'tree' || tab === 'issues' || tab === 'dumps' || tab === 'raw'
   // Each scrolling tab keeps its own place (the tree and issue list keep theirs inside)
   const main = useSavedScroll<HTMLDivElement>(fills ? undefined : `y.${tab}`)
 
@@ -304,6 +314,7 @@ export function AnalysisPage({
             <IssuesView key={trace.id} result={trace.result} nav={nav} source={source} embedded={embedded} />
           </div>
         )}
+        {tab === 'dumps' && <DumpsView parsed={parsed} nav={nav} embedded={embedded} selected={dump} onSelect={setDump} />}
         {tab === 'raw' && source && <RawView source={source} parsed={parsed} nav={nav} target={rawTarget} />}
       </div>
 

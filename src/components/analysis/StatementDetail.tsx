@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { ChevronRight, FileText, GitBranch, PanelBottom, PanelRight, X } from 'lucide-react'
+import { ChevronRight, FileText, GitBranch, PanelBottom, PanelRight, Sheet, X } from 'lucide-react'
 import type { ParsedTrace } from '../../lib/types.ts'
 import type { Nav } from '../../pages/AnalysisPage.tsx'
 import { fmtMs, issueText } from '../../lib/analyze.ts'
@@ -186,6 +186,15 @@ export function StatementDetail({
               <Code text={formatSql(st.sql.resolved)} sql />
             </Block>}
         </div>
+      )}
+
+      {parsed.dumps.map((d, i) =>
+        d.stmtId === st.id ? (
+          <button key={i} className="btn-outline px-2.5 py-1 text-xs" onClick={() => nav.openDump(i)}>
+            <Sheet className="h-3.5 w-3.5" />
+            <span className="font-mono">{d.name}</span> tablosunu aç ({d.rowCount} satır)
+          </button>
+        ) : null,
       )}
 
       {st.message && <Block title={`Mesaj ${st.message.module} ${st.message.type}${st.message.number}`}>{st.message.text}</Block>}

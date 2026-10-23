@@ -44,6 +44,8 @@ export type PageMessage =
   | { type: 'setPrefs'; detailSlideOver: boolean }
   /** No kept analysis of this version of the document: the plugin sends its text */
   | { type: 'need'; doc: string; gen: number }
+  /** The plugin writes the file under %TEMP%\TroiaLens and opens it with its default program */
+  | { type: 'saveCsv'; name: string; text: string }
 
 export function postToHost(msg: PageMessage) {
   webview()?.postMessage(msg)
