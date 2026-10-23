@@ -70,7 +70,7 @@ export function AnalysisPage({
   embedded: boolean
   /** Statement detail slides over from the right instead of docking under the views (Notepad++ setting) */
   detailSlideOver?: boolean
-  /** The editor tints the selected row's lines (Notepad++ setting) */
+  /** The editor tints the selected row and its method (Notepad++ setting) */
   rowHighlight?: boolean
 }) {
   const { parsed, analysis } = trace.result

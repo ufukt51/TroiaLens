@@ -24,7 +24,7 @@ export function CallTree({
   parsed: ParsedTrace
   nav: Nav
   cursor: Cursor | null
-  /** The editor's tint of the selected row's lines; undefined outside Notepad++, where there is no editor */
+  /** The editor's tint of the selected row and its method; undefined outside Notepad++, where there is no editor */
   rowHighlight?: boolean
   onRowHighlight?: (on: boolean) => void
 }) {
@@ -233,7 +233,7 @@ export function CallTree({
         {rowHighlight !== undefined && (
           <label
             className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400"
-            title="Seçili satırın kod bloğunu editörde açık sarıya boyar (eklenti menüsündeki ayarla aynı)"
+            title="Seçili satırın metodunu ve kendisini editörde sarı zeminle gösterir; kapalıyken yalnızca soldaki çubuk kalır (eklenti menüsündeki ayarla aynı)"
           >
             <input type="checkbox" checked={rowHighlight} onChange={(e) => onRowHighlight?.(e.target.checked)} /> Blok rengi
           </label>
