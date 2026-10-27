@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { FileQuestion, FileSearch, Loader2, RefreshCw, TriangleAlert } from 'lucide-react'
 import { AnalysisPage } from '../pages/AnalysisPage.tsx'
 import { analyzeBlob, analyzeUrl, type AnalyzedTrace } from '../lib/run.ts'
-import { onHostMessage, postToHost, setTheme } from '../lib/host.ts'
+import { onHostMessage, postToHost, setTheme, type ParentView } from '../lib/host.ts'
 import { DocStateContext, DocStore, packState, unpackState, type Packed } from '../lib/docState.ts'
 import type { LoadedTrace, TraceResult } from '../lib/types.ts'
 
@@ -51,6 +51,7 @@ export function EmbeddedApp() {
   const [view, setView] = useState<View>({ kind: 'waiting' })
   const [slideOver, setSlideOver] = useState(false)
   const [rowHighlight, setRowHighlight] = useState(true)
+  const [parentView, setParentView] = useState<ParentView>('sticky')
   // Every load gets a ticket; results of an older load are dropped when the user switches tabs quickly
   const ticket = useRef(0)
   // Most recently shown last
@@ -128,6 +129,7 @@ export function EmbeddedApp() {
         case 'prefs':
           setSlideOver(msg.detailSlideOver)
           setRowHighlight(msg.rowHighlight ?? true)
+          setParentView(msg.parentView ?? 'sticky')
           break
         case 'show': {
           // A load still running for another document is dropped either way
@@ -171,7 +173,7 @@ export function EmbeddedApp() {
       return (
         <div className="h-dvh">
           <DocStateContext.Provider value={view.store}>
-            <AnalysisPage key={view.trace.id} trace={view.trace} embedded detailSlideOver={slideOver} rowHighlight={rowHighlight} />
+            <AnalysisPage key={view.trace.id} trace={view.trace} embedded detailSlideOver={slideOver} rowHighlight={rowHighlight} parentView={parentView} />
           </DocStateContext.Provider>
         </div>
       )

@@ -2,6 +2,9 @@
 
 import type { Mark } from './locate.ts'
 
+/** How the call tree shows a row's parent call: not at all, stuck to the top, through its guide lines, or by jumping up and back */
+export type ParentView = 'off' | 'sticky' | 'guides' | 'jump'
+
 export type HostMessage =
   | { type: 'load'; name: string; text: string }
   /**
@@ -17,7 +20,7 @@ export type HostMessage =
   | { type: 'empty' }
   | { type: 'theme'; dark: boolean }
   /** User preferences from the plugin menu */
-  | { type: 'prefs'; detailSlideOver: boolean; rowHighlight?: boolean }
+  | { type: 'prefs'; detailSlideOver: boolean; rowHighlight?: boolean; parentView?: ParentView }
   /** The editor caret moved to another line of the analysed document */
   | { type: 'caret'; line: number }
 
@@ -41,7 +44,7 @@ export type PageMessage =
   | { type: 'clearMarks' }
   | { type: 'reload' }
   /** The user changed a preference in the page; the plugin saves it and answers with prefs */
-  | { type: 'setPrefs'; detailSlideOver?: boolean; rowHighlight?: boolean }
+  | { type: 'setPrefs'; detailSlideOver?: boolean; rowHighlight?: boolean; parentView?: ParentView }
   /** No kept analysis of this version of the document: the plugin sends its text */
   | { type: 'need'; doc: string; gen: number }
   /** The plugin writes the file under %TEMP%\TroiaLens and opens it with its default program */

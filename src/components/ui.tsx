@@ -104,6 +104,8 @@ export function VirtualList<T>({
   overscan = 12,
   rowsOf,
   onRange,
+  onView,
+  overlay,
   scrollKey,
 }: {
   items: ArrayLike<T>
@@ -116,6 +118,10 @@ export function VirtualList<T>({
   rowsOf?: (item: T, width: number) => number
   /** Items about to be drawn, from..to (exclusive) */
   onRange?: (from: number, to: number) => void
+  /** Content offset at the top of the box, in pixels (the call tree's sticky parents follow it) */
+  onView?: (top: number) => void
+  /** Drawn over the top of the rows, inside the scroll box so the scrollbar stays free */
+  overlay?: ReactNode
   /** Notepad++: the scroll position is kept under this key while the user is on another document */
   scrollKey?: string
 }) {
@@ -179,6 +185,7 @@ export function VirtualList<T>({
   const start = Math.max(0, indexAt(view) - overscan)
   const end = Math.min(items.length, indexAt(view + height) + 1 + overscan)
   useEffect(() => onRange?.(start, end), [onRange, start, end])
+  useEffect(() => onView?.(view), [onView, view])
   const rows: ReactNode[] = []
   for (let i = start; i < end; i++) {
     const top = topOf(i)
@@ -194,6 +201,7 @@ export function VirtualList<T>({
         saved.onScroll(e)
       }}
     >
+      {overlay && <div style={{ position: 'sticky', top: 0, height: 0, zIndex: 10 }}>{overlay}</div>}
       <div style={{ height: box, position: 'relative', minWidth: '100%' }}>{rows}</div>
     </div>
   )

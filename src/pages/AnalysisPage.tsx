@@ -3,7 +3,7 @@ import { CircleAlert, Database, FileText, GitBranch, LayoutDashboard, MessageSqu
 import type { LoadedTrace } from '../lib/types.ts'
 import { parseFileName } from '../lib/run.ts'
 import { fmtMs } from '../lib/analyze.ts'
-import { onHostMessage, postToHost } from '../lib/host.ts'
+import { onHostMessage, postToHost, type ParentView } from '../lib/host.ts'
 import { useDocStore, usePersisted, useSavedScroll } from '../lib/docState.ts'
 import { markFor, refAtLine, type Mark } from '../lib/locate.ts'
 import { Overview } from '../components/analysis/Overview.tsx'
@@ -24,6 +24,18 @@ function savedSlideOver(): boolean {
     return localStorage.getItem(SLIDE_OVER_KEY) === '1'
   } catch {
     return false
+  }
+}
+
+const PARENT_VIEW_KEY = 'troialens.parentView'
+const PARENT_VIEWS: readonly ParentView[] = ['off', 'sticky', 'guides', 'jump']
+
+function savedParentView(): ParentView {
+  try {
+    const v = localStorage.getItem(PARENT_VIEW_KEY) as ParentView | null
+    return v && PARENT_VIEWS.includes(v) ? v : 'sticky'
+  } catch {
+    return 'sticky'
   }
 }
 
@@ -65,6 +77,7 @@ export function AnalysisPage({
   embedded,
   detailSlideOver,
   rowHighlight,
+  parentView,
 }: {
   trace: LoadedTrace
   embedded: boolean
@@ -72,6 +85,8 @@ export function AnalysisPage({
   detailSlideOver?: boolean
   /** The editor tints the selected row and its method (Notepad++ setting) */
   rowHighlight?: boolean
+  /** How the call tree shows a row's parent call (Notepad++ setting) */
+  parentView?: ParentView
 }) {
   const { parsed, analysis } = trace.result
   // In Notepad++ these survive a switch to another document and back (see docState)
@@ -85,6 +100,10 @@ export function AnalysisPage({
   useEffect(() => {
     if (rowHighlight !== undefined) setTint(rowHighlight)
   }, [rowHighlight])
+  const [parents, setParents] = useState(() => parentView ?? savedParentView())
+  useEffect(() => {
+    if (parentView !== undefined) setParents(parentView)
+  }, [parentView])
   const [cursor, setCursor] = usePersisted<Cursor | null>('cursor', null)
   const [dump, setDump] = usePersisted('dump', 0)
   const [issuesOpened, setIssuesOpened] = useState(false)
@@ -231,6 +250,17 @@ export function AnalysisPage({
     setTint(on)
     postToHost({ type: 'setPrefs', rowHighlight: on })
   }
+  // Notepad++ keeps it in its settings and its menu; the browser remembers it locally
+  const changeParents = (v: ParentView) => {
+    setParents(v)
+    if (embedded) postToHost({ type: 'setPrefs', parentView: v })
+    else
+      try {
+        localStorage.setItem(PARENT_VIEW_KEY, v)
+      } catch {
+        // Not remembered then
+      }
+  }
   const fills = tab === 'tree' || tab === 'issues' || tab === 'dumps' || tab === 'raw'
   // Each scrolling tab keeps its own place (the tree and issue list keep theirs inside)
   const main = useSavedScroll<HTMLDivElement>(fills ? undefined : `y.${tab}`)
@@ -301,7 +331,15 @@ export function AnalysisPage({
         {tab === 'overview' && <Overview result={trace.result} nav={nav} goTab={setTab} />}
         {tab === 'tree' && (
           <div className="flex min-h-0 flex-1 gap-4">
-            <CallTree parsed={parsed} nav={nav} cursor={cursor} rowHighlight={embedded ? tint : undefined} onRowHighlight={toggleTint} />
+            <CallTree
+              parsed={parsed}
+              nav={nav}
+              cursor={cursor}
+              rowHighlight={embedded ? tint : undefined}
+              onRowHighlight={toggleTint}
+              parentView={parents}
+              onParentView={changeParents}
+            />
             {source && cursor && (
               <SourcePane
                 source={source}

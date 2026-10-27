@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Check, ChevronLeft, ChevronRight, Copy, Download, FileSpreadsheet, FileText, GitBranch, Rows3, Search, Sheet, Table2 } from 'lucide-react'
 import type { ParsedTrace, TraceDump } from '../../lib/types.ts'
 import type { Nav } from '../../pages/AnalysisPage.tsx'
@@ -150,12 +150,12 @@ function DumpTable({
     return out
   }, [d, colQuery, showState])
 
+  const hitQuery = valQuery.trim().toLocaleLowerCase('tr-TR')
   const rows = useMemo(() => {
-    const q = valQuery.trim().toLocaleLowerCase('tr-TR')
     const out: number[] = []
-    for (let i = 0; i < cells.length; i++) if (!q || cols.some((k) => (cells[i][k] ?? '').toLocaleLowerCase('tr-TR').includes(q))) out.push(i)
+    for (let i = 0; i < cells.length; i++) if (!hitQuery || cols.some((k) => (cells[i][k] ?? '').toLocaleLowerCase('tr-TR').includes(hitQuery))) out.push(i)
     return out
-  }, [cells, cols, valQuery])
+  }, [cells, cols, hitQuery])
 
   const copy = async () => {
     const shown = mode === 'record' ? (cells[record] ? [record] : []) : rows
@@ -248,7 +248,7 @@ function DumpTable({
           {(
             [
               ['table', Table2, 'Tablo'],
-              ['record', Rows3, 'Kayıt'],
+              ['record', Rows3, 'Satır'],
             ] as const
           ).map(([m, Icon, label]) => (
             <button
@@ -350,7 +350,7 @@ function DumpTable({
                             isNumeric(d.columns[k]) ? 'text-right tabular-nums' : ''
                           } ${active ? 'bg-brand-50/60 dark:bg-brand-900/20' : ''}`}
                         >
-                          {v}
+                          <Hits text={v} q={hitQuery} />
                           {cellCut(d, k, v) && (
                             <span className="text-amber-600 dark:text-amber-400" title={CUT_TITLE}>
                               …
@@ -501,7 +501,7 @@ function RecordTable({
                 {c && !c.writable && <span className="ml-1 text-slate-400">RO</span>}
               </td>
               <td className={`border-b border-slate-100 px-3 py-1 font-mono whitespace-pre-wrap break-all dark:border-slate-800 ${isNumeric(c) ? 'tabular-nums' : ''}`}>
-                {v}
+                <Hits text={v} q={q} />
                 {cells && cellCut(d, k, v) && (
                   <span className="text-amber-600 dark:text-amber-400" title={CUT_TITLE}>
                     …
@@ -521,4 +521,37 @@ function RecordTable({
       </tbody>
     </table>
   )
+}
+
+/**
+ * The value with each occurrence of the search text (already lower-cased) marked. Case is ignored the Turkish way,
+ * as the filter does; solid amber stays readable on both themes and on the active row's tint.
+ */
+function Hits({ text, q }: { text: string; q: string }) {
+  if (!q) return text
+  // Lower-cased one character at a time, so a position in it maps back to the value
+  let low = ''
+  const at: number[] = []
+  for (let i = 0; i < text.length; i++) {
+    const l = text[i].toLocaleLowerCase('tr-TR')
+    for (let j = 0; j < l.length; j++) at.push(i)
+    low += l
+  }
+  at.push(text.length)
+  const out: ReactNode[] = []
+  let last = 0
+  for (let j = low.indexOf(q); j !== -1; j = low.indexOf(q, j + q.length)) {
+    const from = at[j]
+    const to = at[j + q.length]
+    if (from > last) out.push(text.slice(last, from))
+    out.push(
+      <mark key={j} className="rounded-[3px] bg-amber-300 text-slate-950 dark:bg-amber-400 dark:text-slate-950">
+        {text.slice(from, to)}
+      </mark>,
+    )
+    last = to
+  }
+  if (!out.length) return text
+  if (last < text.length) out.push(text.slice(last))
+  return out
 }
