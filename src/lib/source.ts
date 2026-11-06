@@ -61,6 +61,12 @@ export class LineSource {
     }
   }
 
+  /** Lines from..to (exclusive) as the file has them, nothing cut; read from the file, not kept */
+  async fullText(from: number, to: number): Promise<string> {
+    const bytes = await this.blob.slice(this.start(from), this.end(Math.min(to, this.count) - 1)).arrayBuffer()
+    return new TextDecoder(this.encoding).decode(bytes).replace(/\r?\n$/, '')
+  }
+
   subscribe = (fn: () => void): (() => void) => {
     this.listeners.add(fn)
     return () => this.listeners.delete(fn)

@@ -57,6 +57,23 @@ export function refAtLine(parsed: ParsedTrace, line: number): number | null {
   return scope > 0 ? ~scope : null
 }
 
+/**
+ * Trace lines a tree row stands for: a call's whole span, a block statement (IF, LOOP...) up to its closing line, any
+ * other statement its own lines.
+ */
+export function spanOf(parsed: ParsedTrace, ref: number): { from: number; to: number } {
+  const { scopes, statements } = parsed
+  if (ref < 0) return { from: scopes[~ref].startLine, to: scopes[~ref].endLine }
+  const st = statements[ref]
+  const { line, lineEnd } = markFor(parsed, ref)
+  if (st.blockEnd === undefined) return { from: line, to: lineEnd }
+  // The closing lines are not recorded: the block lasts until the next row of its scope begins
+  const scope = scopes[st.scopeId]
+  const next = scope.kids[st.blockEnd]
+  if (next === undefined) return { from: line, to: scope.endLine }
+  return { from: line, to: (next < 0 ? scopes[~next].startLine : statements[next].fileLine) - 1 }
+}
+
 export interface Mark {
   /** Span of the row's scope; 0 for top-level rows */
   from: number

@@ -333,6 +333,7 @@ export function AnalysisPage({
           <div className="flex min-h-0 flex-1 gap-4">
             <CallTree
               parsed={parsed}
+              source={source}
               nav={nav}
               cursor={cursor}
               rowHighlight={embedded ? tint : undefined}

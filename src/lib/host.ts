@@ -42,6 +42,8 @@ export type PageMessage =
   /** Highlights a scope span, the selected row's lines and the method name inside the span (see markFor) */
   | ({ type: 'mark' } & Mark)
   | { type: 'clearMarks' }
+  /** The editor copies trace lines from..to to the clipboard */
+  | { type: 'copyLines'; from: number; to: number }
   | { type: 'reload' }
   /** The user changed a preference in the page; the plugin saves it and answers with prefs */
   | { type: 'setPrefs'; detailSlideOver?: boolean; rowHighlight?: boolean; parentView?: ParentView }

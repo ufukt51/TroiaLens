@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { TraceParser } from '../src/lib/parser.ts'
 import { eachLine, NotUtf8, type TraceEncoding } from '../src/lib/lines.ts'
 import { analyze } from '../src/lib/analyze.ts'
-import { refAtLine } from '../src/lib/locate.ts'
+import { refAtLine, spanOf } from '../src/lib/locate.ts'
 
 // Known results for the test traces. A change here must be deliberate.
 // Real traces and their expectations live in samples/ (not committed): samples/expected.json
@@ -72,6 +72,14 @@ for (const file of targets) {
     if (s.id === 0 || s.implicit || stmtLines.has(s.startLine)) continue
     const ref = refAtLine(p, s.startLine)
     if (ref !== ~s.id) { failures.push(`${file}: satır ${s.startLine} kapsam ${s.id} yerine ${ref} buldu`); break }
+  }
+  // Copying a row: a block covers its rows
+  for (const st of p.statements) {
+    if (st.blockEnd === undefined) continue
+    const { from, to } = spanOf(p, st.id)
+    const last = p.scopes[st.scopeId].kids[st.blockEnd - 1]
+    const lastLine = last === undefined ? st.fileLine : last < 0 ? p.scopes[~last].endLine : p.statements[last].fileLine
+    if (from !== st.fileLine || to < lastLine) { failures.push(`${file}: blok ${st.fileLine} aralığı ${from}-${to}, son satır ${lastLine}`); break }
   }
   const show = (id: number, ind = '') => {
     const s = p.scopes[id]

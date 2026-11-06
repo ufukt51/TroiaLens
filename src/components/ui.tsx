@@ -214,10 +214,11 @@ export function ScoreDot({ score, size = 'sm' }: { score: number; size?: 'sm' | 
   return <div className={`flex shrink-0 items-center justify-center rounded-full font-semibold text-white ${color} ${dims}`}>{score}</div>
 }
 
-export async function copyText(text: string) {
+/** False when the text could not be copied */
+export async function copyText(text: string): Promise<boolean> {
   try {
     await navigator.clipboard.writeText(text)
-    return
+    return true
   } catch {
     // Clipboard API refused (no secure context or permission); fall back to a selection copy
   }
@@ -227,8 +228,9 @@ export async function copyText(text: string) {
   area.style.opacity = '0'
   document.body.appendChild(area)
   area.select()
-  document.execCommand('copy')
+  const ok = document.execCommand('copy')
   area.remove()
+  return ok
 }
 
 /**

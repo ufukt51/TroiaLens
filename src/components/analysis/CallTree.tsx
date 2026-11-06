@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
-import { ChevronDown, ChevronRight, ChevronUp, ChevronsDownUp, ChevronsUpDown, CornerLeftUp, Database, Info, Search, Undo2, X } from 'lucide-react'
+import { Check, ChevronDown, ChevronRight, ChevronUp, ChevronsDownUp, ChevronsUpDown, Copy, CornerLeftUp, Database, Info, Search, Undo2, X } from 'lucide-react'
 import type { ParsedTrace } from '../../lib/types.ts'
 import type { Cursor, Nav } from '../../pages/AnalysisPage.tsx'
-import type { ParentView } from '../../lib/host.ts'
+import { postToHost, type ParentView } from '../../lib/host.ts'
+import type { LineSource } from '../../lib/source.ts'
 import { fmtMs } from '../../lib/analyze.ts'
-import { editorLine } from '../../lib/locate.ts'
-import { Bar, KindChip, VirtualList, msClass } from '../ui.tsx'
+import { editorLine, spanOf } from '../../lib/locate.ts'
+import { Bar, KindChip, VirtualList, copyText, msClass } from '../ui.tsx'
 import { Code } from '../SyntaxText.tsx'
 import { usePersisted } from '../../lib/docState.ts'
 
@@ -30,6 +31,7 @@ const rowRef = (r: Row) => (r.scope ? ~r.id : r.id)
 
 export function CallTree({
   parsed,
+  source,
   nav,
   cursor,
   rowHighlight,
@@ -38,6 +40,8 @@ export function CallTree({
   onParentView,
 }: {
   parsed: ParsedTrace
+  /** The file's lines; null in Notepad++, where the editor copies them */
+  source: LineSource | null
   nav: Nav
   cursor: Cursor | null
   /** The editor's tint of the selected row and its method; undefined outside Notepad++, where there is no editor */
@@ -57,6 +61,7 @@ export function CallTree({
   const [onlySql, setOnlySql] = usePersisted('tree.sql', false)
   const [minMs, setMinMs] = usePersisted('tree.minMs', 0)
   const [scrollTo, setScrollTo] = useState<{ index: number; nonce: number } | null>(null)
+  const [copied, setCopied] = useState<{ ref: number; ok: boolean } | null>(null)
   // Row to scroll to as soon as it is listed (its ancestors may still be opening)
   const pending = useRef<number | null>(null)
 
@@ -241,6 +246,15 @@ export function CallTree({
     openOnly((depth) => depth < l)
   }
 
+  const copyRow = async (ref: number) => {
+    const { from, to } = spanOf(parsed, ref)
+    let ok = true
+    if (source) ok = await source.fullText(from - 1, to).then(copyText, () => false)
+    else postToHost({ type: 'copyLines', from, to })
+    setCopied({ ref, ok })
+    setTimeout(() => setCopied((c) => (c?.ref === ref ? null : c)), 1500)
+  }
+
   const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
     if (!rows.length) return
     const cur = cursor ? rows.findIndex((r) => rowRef(r) === cursor.ref) : -1
@@ -292,6 +306,12 @@ export function CallTree({
         if (row.scope) toggle(row.id)
         else nav.select(row.id)
         break
+      case 'c':
+      case 'C':
+        // Ctrl+C keeps its usual meaning while text is selected
+        if (!e.ctrlKey || e.altKey || !cursor || !window.getSelection()?.isCollapsed) return
+        void copyRow(cursor.ref)
+        break
       default:
         return
     }
@@ -304,6 +324,32 @@ export function CallTree({
     `group relative flex h-full cursor-pointer items-center gap-2 border-b border-slate-50 pr-3 dark:border-slate-800/40 ${
       sel ? 'bg-brand-100/70 shadow-[inset_3px_0_0_var(--color-brand-500)] dark:bg-brand-500/20' : 'hover:bg-slate-50 dark:hover:bg-slate-800/40'
     }`
+
+  const copyButton = (ref: number, sel: boolean) => {
+    const { from, to } = spanOf(parsed, ref)
+    const first = editorLine(parsed, from)
+    const last = editorLine(parsed, to)
+    const state = copied?.ref === ref ? copied.ok : null
+    const label =
+      state === false
+        ? 'Kopyalanamadı'
+        : `${first.toLocaleString('tr-TR')}–${last.toLocaleString('tr-TR')}. satırları kopyala (${(last - first + 1).toLocaleString('tr-TR')} satır)`
+    return (
+      <button
+        className={`shrink-0 rounded p-0.5 text-slate-400 hover:bg-white hover:text-brand-600 focus-visible:opacity-100 dark:hover:bg-slate-700 dark:hover:text-brand-300 ${
+          sel || state !== null ? '' : 'opacity-0 group-hover:opacity-100'
+        }`}
+        onClick={(e) => {
+          e.stopPropagation()
+          void copyRow(ref)
+        }}
+        title={state === false ? label : `${label} · seçili satırda Ctrl+C`}
+        aria-label={label}
+      >
+        {state === null ? <Copy className="h-3.5 w-3.5" /> : state ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <X className="h-3.5 w-3.5 text-rose-500" />}
+      </button>
+    )
+  }
 
   /** A call's row: in the list, and stuck to the top as a sticky parent */
   const scopeRow = (
@@ -350,6 +396,7 @@ export function CallTree({
           >
             {first.toLocaleString('tr-TR')}–{last.toLocaleString('tr-TR')}
           </span>
+          {copyButton(~id, o.sel)}
         </span>
         <span className="hidden w-28 shrink-0 sm:block">
           <Bar value={s.totalMs} max={rootTotal} />
@@ -565,6 +612,7 @@ export function CallTree({
                   {st.sql?.rows !== undefined && <span className="shrink-0 text-[11px] text-slate-400">{st.sql.rows} satır</span>}
                   {st.iterations !== undefined && st.iterations > 0 && <span className="shrink-0 text-[11px] text-amber-600">{st.iterations}×</span>}
                   {up}
+                  {copyButton(st.id, sel)}
                   <button
                     className={`shrink-0 rounded p-0.5 text-slate-400 hover:bg-white hover:text-brand-600 dark:hover:bg-slate-700 dark:hover:text-brand-300 ${
                       sel ? '' : 'opacity-0 group-hover:opacity-100'
@@ -601,7 +649,7 @@ export function CallTree({
       )}
       <div className="flex items-center gap-2 border-t border-slate-100 px-3 py-1.5 text-[11px] text-slate-500 dark:border-slate-800">
         <span className="min-w-0 flex-1 truncate">
-          {rows.length.toLocaleString('tr-TR')} satır görünüyor · Süreler alt çağrıları da içerir · ↑↓ ←→ gezin, Enter ayrıntı
+          {rows.length.toLocaleString('tr-TR')} satır görünüyor · Süreler alt çağrıları da içerir · ↑↓ ←→ gezin, Enter ayrıntı, Ctrl+C satırlarını kopyala
         </span>
         {cursor && (
           <button className="flex shrink-0 items-center gap-1 hover:text-slate-800 dark:hover:text-slate-200" onClick={nav.unpick} title="Seçimi ve vurgulamayı kaldır">

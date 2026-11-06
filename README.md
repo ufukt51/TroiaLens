@@ -24,7 +24,8 @@ Trace dosyasını (`.trace`, `.txt` veya `.log`) ana sayfaya sürükleyin ya da 
 - **Özet:** Toplam süre, sorgu sayısı ve en uzun çağrı derinliği gibi temel göstergeler. Bulunan sorunlar önerilerle birlikte listelenir.
 - **Çağrı ağacı:** Event, metot ve sınıf çağrılarını iç içe görürsünüz. Her satırda süre ve sorgu sayısı görünür.
   Ağacın kaç seviye açılacağını ↑ ve ↓ düğmeleriyle seçebilirsiniz. Ağaçta arama yapabilir, yalnızca SQL satırlarını
-  ya da belirli bir süreyi aşan satırları gösterebilirsiniz.
+  ya da belirli bir süreyi aşan satırları gösterebilirsiniz. Satırdaki kopyala düğmesi ya da seçili satırda Ctrl+C, metodun
+  veya bloğun dosyadaki tüm satırlarını panoya kopyalar.
 - **Kaynak görünümü:** Ağaçta seçtiğiniz satır, trace dosyasının içinde işaretlenmiş olarak gösterilir.
 - **Satır ayrıntısı:** Bir satıra çift tıkladığınızda kodu, değerlendirmesini ve veritabanına giden sorguyu görürsünüz.
   Ayrıntı alt bölmede ya da sağdan kayan panelde açılabilir.
