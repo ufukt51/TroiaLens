@@ -38,11 +38,25 @@ export async function analyzeBlob(blob: Blob): Promise<AnalyzedTrace> {
   return { result: r.result, size: r.size, source: new LineSource(blob, r.encoding, r.offsets!, r.widths!) }
 }
 
-/** The document the Notepad++ plugin serves; its body streams straight into the worker */
+/**
+ * The document the Notepad++ plugin serves, one chunk per request (url + &at=offset; an empty one is the end):
+ * WebView2 holds a whole response in Notepad++'s memory. The chunks stream straight into the worker.
+ */
 export async function analyzeUrl(url: string): Promise<AnalyzedTrace> {
-  const res = await fetch(url, { cache: 'no-store' })
-  if (!res.ok || !res.body) throw new Error(`Dosya okunamadı (${res.status})`)
-  const r = await inWorker<Analyzed>({ kind: 'analyze', stream: res.body }, [res.body]).promise
+  let at = 0
+  const stream = new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      const res = await fetch(`${url}&at=${at}`, { cache: 'no-store' })
+      if (!res.ok) throw new Error(`Dosya okunamadı (${res.status})`)
+      const chunk = new Uint8Array(await res.arrayBuffer())
+      if (chunk.length === 0) controller.close()
+      else {
+        at += chunk.length
+        controller.enqueue(chunk)
+      }
+    },
+  })
+  const r = await inWorker<Analyzed>({ kind: 'analyze', stream }, [stream]).promise
   return { result: r.result, size: r.size, source: null }
 }
 
