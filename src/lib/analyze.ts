@@ -374,3 +374,34 @@ export function analyze(p: ParsedTrace): Analysis {
 
   return { totals, methods, hotLines, slowest, sqlGroups, repeats, messages, findings, score, grade, info }
 }
+
+/** Per-class and per-dialog aggregates. A scope named "(CLASS.BASE) ..." belongs to a class, otherwise to a dialog. */
+export function ownerStats(scopes: ParsedTrace['scopes']): { classes: MethodStat[]; dialogs: MethodStat[] } {
+  const maps = { class: new Map<string, MethodStat>(), dialog: new Map<string, MethodStat>() }
+  const kindOf = (name: string) => (name.startsWith('(') ? 'class' : 'dialog')
+  for (const s of scopes) {
+    if (s.id === 0 || !s.owner) continue
+    const kind = kindOf(s.name)
+    const map = maps[kind]
+    let m = map.get(s.owner)
+    if (!m) {
+      m = { name: s.owner, label: s.owner, owner: '', calls: 0, selfMs: 0, totalMs: 0, stmts: 0, sql: 0, firstScope: s.id }
+      map.set(s.owner, m)
+    }
+    m.calls++
+    m.selfMs += s.selfMs
+    m.stmts += s.stmtCount
+    m.sql += s.sqlCount
+    // Count total time once: skip when an enclosing scope has the same owner
+    let nested = false
+    for (let q = s.parent; q > 0; q = scopes[q].parent) {
+      if (scopes[q].owner === s.owner && kindOf(scopes[q].name) === kind) {
+        nested = true
+        break
+      }
+    }
+    if (!nested) m.totalMs += s.totalMs
+  }
+  const sort = (m: Map<string, MethodStat>) => [...m.values()].sort((a, b) => b.totalMs - a.totalMs || b.calls - a.calls)
+  return { classes: sort(maps.class), dialogs: sort(maps.dialog) }
+}

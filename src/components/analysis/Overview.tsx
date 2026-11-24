@@ -1,7 +1,8 @@
-import { Activity, AlertOctagon, Clock, Database, GitBranch, Layers, Repeat } from 'lucide-react'
-import type { TraceResult } from '../../lib/types.ts'
+import { Activity, Search, AlertOctagon, Clock, Database, GitBranch, Layers, Repeat } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import type { Analysis, MethodStat, Scope, TraceResult } from '../../lib/types.ts'
 import type { Nav, Tab } from '../../pages/AnalysisPage.tsx'
-import { fmtMs } from '../../lib/analyze.ts'
+import { fmtMs, ownerStats } from '../../lib/analyze.ts'
 import { Bar, KindChip, Kpi, SEVERITY_META, SectionTitle, msClass } from '../ui.tsx'
 import { Code } from '../SyntaxText.tsx'
 import { usePersisted } from '../../lib/docState.ts'
@@ -11,7 +12,6 @@ export function Overview({ result, nav, goTab }: { result: TraceResult; nav: Nav
   const t = analysis.totals
   const [showAllFindings, setShowAllFindings] = usePersisted('overview.allFindings', false)
   const findings = showAllFindings ? analysis.findings : analysis.findings.slice(0, 8)
-  const maxMethod = analysis.methods[0]?.totalMs ?? 0
 
   const jump = (fileLine?: number) => {
     if (!fileLine) return
@@ -86,49 +86,7 @@ export function Overview({ result, nav, goTab }: { result: TraceResult; nav: Nav
         )}
       </div>
 
-      <div className="card p-5 lg:col-span-2">
-        <SectionTitle
-          right={
-            <button className="text-xs font-medium text-brand-600 dark:text-brand-400" onClick={() => goTab('tree')}>
-              Çağrı ağacı
-            </button>
-          }
-        >
-          En çok zaman alan metotlar
-        </SectionTitle>
-        <div className="scroll-thin overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-100 dark:border-slate-800">
-                <th className="th">Metot</th>
-                <th className="th text-right">Çağrı</th>
-                <th className="th text-right">SQL</th>
-                <th className="th w-40">Toplam</th>
-                <th className="th text-right">Kendi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {analysis.methods.slice(0, 12).map((m) => (
-                <tr key={m.name} className="cursor-pointer border-b border-slate-50 hover:bg-slate-50 dark:border-slate-800/50 dark:hover:bg-slate-800/40" onClick={() => nav.revealInTree(~m.firstScope)}>
-                  <td className="td">
-                    <div className="font-mono text-xs font-medium text-slate-900 dark:text-white">{m.label}</div>
-                    <div className="font-mono text-[11px] text-slate-500">{m.owner}</div>
-                  </td>
-                  <td className="td text-right tabular-nums">{m.calls}</td>
-                  <td className="td text-right tabular-nums">{m.sql || '—'}</td>
-                  <td className="td">
-                    <div className="flex items-center gap-2">
-                      <Bar value={m.totalMs} max={maxMethod} />
-                      <span className={`w-16 shrink-0 text-right text-xs tabular-nums ${msClass(m.totalMs)}`}>{fmtMs(m.totalMs)}</span>
-                    </div>
-                  </td>
-                  <td className={`td text-right text-xs tabular-nums ${msClass(m.selfMs)}`}>{fmtMs(m.selfMs)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <TopTable analysis={analysis} scopes={parsed.scopes} nav={nav} goTab={goTab} />
 
       <div className="card p-5">
         <SectionTitle
@@ -162,6 +120,101 @@ export function Overview({ result, nav, goTab }: { result: TraceResult; nav: Nav
           {analysis.slowest.length === 0 && <li className="py-4 text-center text-sm text-slate-500">Süresi ölçülen satır yok.</li>}
         </ul>
       </div>
+    </div>
+  )
+}
+
+type TopKind = 'methods' | 'classes' | 'dialogs'
+const TOP_TABS: { id: TopKind; label: string; first: string }[] = [
+  { id: 'methods', label: 'Metot', first: 'Metot' },
+  { id: 'classes', label: 'Sınıf', first: 'Sınıf' },
+  { id: 'dialogs', label: 'Dialog', first: 'Dialog' },
+]
+const TOP_LIMIT = 200
+
+function TopTable({ analysis, scopes, nav, goTab }: { analysis: Analysis; scopes: Scope[]; nav: Nav; goTab: (t: Tab) => void }) {
+  const [kind, setKind] = usePersisted<TopKind>('overview.topKind', 'methods')
+  const [q, setQ] = useState('')
+  const owners = useMemo(() => ownerStats(scopes), [scopes])
+  const all: MethodStat[] = kind === 'methods' ? analysis.methods : kind === 'classes' ? owners.classes : owners.dialogs
+  const rows = useMemo(() => {
+    const t = q.trim().toLocaleLowerCase('tr-TR')
+    return t ? all.filter((m) => `${m.label} ${m.owner} ${m.name}`.toLocaleLowerCase('tr-TR').includes(t)) : all
+  }, [all, q])
+  const max = all[0]?.totalMs ?? 0
+  const shown = rows.slice(0, TOP_LIMIT)
+
+  return (
+    <div className="card p-5 lg:col-span-2">
+      <SectionTitle
+        right={
+          <button className="text-xs font-medium text-brand-600 dark:text-brand-400" onClick={() => goTab('tree')}>
+            Çağrı ağacı
+          </button>
+        }
+      >
+        En çok zaman alanlar
+      </SectionTitle>
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <div className="flex gap-1">
+          {TOP_TABS.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setKind(t.id)}
+              className={`rounded-md px-2.5 py-1 text-xs font-medium ${kind === t.id ? 'bg-brand-500 text-white' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'}`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <div className="relative ml-auto w-full sm:w-56">
+          <Search className="pointer-events-none absolute top-1/2 left-2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Ara…"
+            className="w-full rounded-md border border-slate-200 bg-transparent py-1 pr-2 pl-7 text-xs dark:border-slate-700"
+          />
+        </div>
+      </div>
+      <div className="scroll-thin max-h-[32rem] overflow-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-slate-100 dark:border-slate-800">
+              <th className="th">{TOP_TABS.find((t) => t.id === kind)!.first}</th>
+              <th className="th text-right">Çağrı</th>
+              <th className="th text-right">SQL</th>
+              <th className="th w-40">Toplam</th>
+              <th className="th text-right">Kendi</th>
+            </tr>
+          </thead>
+          <tbody>
+            {shown.map((m) => (
+              <tr key={m.name} className="cursor-pointer border-b border-slate-50 hover:bg-slate-50 dark:border-slate-800/50 dark:hover:bg-slate-800/40" onClick={() => nav.revealInTree(~m.firstScope)}>
+                <td className="td">
+                  <div className="font-mono text-xs font-medium text-slate-900 dark:text-white">{m.label}</div>
+                  {m.owner && <div className="font-mono text-[11px] text-slate-500">{m.owner}</div>}
+                </td>
+                <td className="td text-right tabular-nums">{m.calls}</td>
+                <td className="td text-right tabular-nums">{m.sql || '—'}</td>
+                <td className="td">
+                  <div className="flex items-center gap-2">
+                    <Bar value={m.totalMs} max={max} />
+                    <span className={`w-16 shrink-0 text-right text-xs tabular-nums ${msClass(m.totalMs)}`}>{fmtMs(m.totalMs)}</span>
+                  </div>
+                </td>
+                <td className={`td text-right text-xs tabular-nums ${msClass(m.selfMs)}`}>{fmtMs(m.selfMs)}</td>
+              </tr>
+            ))}
+            {rows.length === 0 && (
+              <tr>
+                <td colSpan={5} className="py-4 text-center text-sm text-slate-500">Sonuç yok.</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+      {rows.length > TOP_LIMIT && <div className="mt-2 text-xs text-slate-500">İlk {TOP_LIMIT} / {rows.length} gösteriliyor; aramayı daraltın.</div>}
     </div>
   )
 }
