@@ -135,12 +135,14 @@ const TOP_LIMIT = 200
 function TopTable({ analysis, scopes, nav, goTab }: { analysis: Analysis; scopes: Scope[]; nav: Nav; goTab: (t: Tab) => void }) {
   const [kind, setKind] = usePersisted<TopKind>('overview.topKind', 'methods')
   const [q, setQ] = useState('')
+  const [owner, setOwner] = useState('') // "c:SINIF" | "d:DIALOG" | ''
   const owners = useMemo(() => ownerStats(scopes), [scopes])
   const all: MethodStat[] = kind === 'methods' ? analysis.methods : kind === 'classes' ? owners.classes : owners.dialogs
   const rows = useMemo(() => {
     const t = q.trim().toLocaleLowerCase('tr-TR')
-    return t ? all.filter((m) => `${m.label} ${m.owner} ${m.name}`.toLocaleLowerCase('tr-TR').includes(t)) : all
-  }, [all, q])
+    const byOwner = kind === 'methods' && owner ? all.filter((m) => m.owner === owner.slice(2) && m.name.startsWith('(') === (owner[0] === 'c')) : all
+    return t ? byOwner.filter((m) => `${m.label} ${m.owner} ${m.name}`.toLocaleLowerCase('tr-TR').includes(t)) : byOwner
+  }, [all, q, kind, owner])
   const max = all[0]?.totalMs ?? 0
   const shown = rows.slice(0, TOP_LIMIT)
 
@@ -167,6 +169,26 @@ function TopTable({ analysis, scopes, nav, goTab }: { analysis: Analysis; scopes
             </button>
           ))}
         </div>
+        {kind === 'methods' && (
+          <select
+            value={owner}
+            onChange={(e) => setOwner(e.target.value)}
+            className="max-w-[14rem] rounded-md border border-slate-200 bg-transparent py-1 text-xs dark:border-slate-700 dark:bg-slate-900"
+            title="Sınıf veya dialog'a göre filtrele"
+          >
+            <option value="">Tüm sınıf / dialoglar</option>
+            <optgroup label="Sınıf">
+              {owners.classes.map((o) => (
+                <option key={'c:' + o.name} value={'c:' + o.name}>{o.name} ({o.calls})</option>
+              ))}
+            </optgroup>
+            <optgroup label="Dialog">
+              {owners.dialogs.map((o) => (
+                <option key={'d:' + o.name} value={'d:' + o.name}>{o.name} ({o.calls})</option>
+              ))}
+            </optgroup>
+          </select>
+        )}
         <div className="relative ml-auto w-full sm:w-56">
           <Search className="pointer-events-none absolute top-1/2 left-2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
           <input
